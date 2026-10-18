@@ -1,0 +1,35 @@
+# Build & Distribution artifacts
+build/
+dist/
+DerivedData/
+*.ipa
+*.dSYM/
+
+# Xcode & Swift
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/**/xcuserdata/
+*.xcworkspace/**/xcuserdata/
+.build/
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Cloudflare & Node
+deploy/node_modules/
+deploy/public/
+deploy/.cloudflare/
+.wrangler/
+
+# Temporary & Environment files
+*.swp
+*.orig
+*~
+.env
+.env.*
+!.env.example

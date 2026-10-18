@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-Posed Settings</title>
+    <link rel="stylesheet" href="../styles/graphite-theme.css">
+    <link rel="stylesheet" href="../styles/graphite.css">
+    <link rel="stylesheet" href="../styles/badges.css">
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="options-container">
+        <!-- What's New Banner (hidden by default, shown on update) -->
+        <div class="whats-new-banner" id="whats-new-banner" role="region" aria-labelledby="whats-new-title" style="display: none;">
+            <button type="button" class="whats-new-close" id="whats-new-close" aria-label="Dismiss what's new" data-settings-icon="close"></button>
+            <div class="whats-new-content">
+                <h2 id="whats-new-title"><span id="release-heading">What's new in X-Posed</span> <span data-release-version>4.3.0</span></h2>
+                <p class="whats-new-subtitle">Your feed. Your rules. Now a little easier.</p>
+
+                <div class="whats-new-features">
+                    <section class="whats-new-feature" aria-labelledby="whats-new-filters-title">
+                        <h3 id="whats-new-filters-title"><span class="settings-icon" data-settings-icon="shield" aria-hidden="true"></span>See it. Filter it.</h3>
+                        <p>Open a card on X and filter the account, country or region in a click. Your <strong>Hide or Highlight</strong> choice applies, and account filters keep working even if the handle changes.</p>
+                    </section>
+
+                    <section class="whats-new-feature whats-new-card-feature" aria-labelledby="whats-new-cards-title">
+                        <h3 id="whats-new-cards-title"><span class="settings-icon" data-settings-icon="copy" aria-hidden="true"></span>A card worth sharing.</h3>
+                        <p>Profile picture, location and the useful details, all in one tidy card. Use <strong>Copy</strong> to paste it into a chat, or <strong>Save</strong> to keep it for later.</p>
+                    </section>
+                </div>
+
+                <div class="whats-new-actions">
+                    <a href="#panel-general" class="btn btn-primary whats-new-open" data-target="panel-general">Continue to settings</a>
+                    <a href="https://github.com/xaitax/x-account-location-device/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer" class="whats-new-changelog">Full changelog &amp; credits</a>
+                </div>
+                <aside class="whats-new-cta" aria-labelledby="whats-new-support-title">
+                    <div class="whats-new-support-copy">
+                        <h3 id="whats-new-support-title" class="whats-new-support-title">
+                            <span class="settings-icon" data-settings-icon="heart" aria-hidden="true"></span>
+                            You make this possible
+                        </h3>
+                        <p><strong>A massive thank-you to everyone who’s donated.</strong> You help pay for the community cache and infrastructure, and keep X-Posed free for everyone.</p>
+                    </div>
+                    <div class="whats-new-support-actions">
+                        <a href="https://ko-fi.com/M4M61EP5XL" target="_blank" rel="noopener noreferrer" class="btn whats-new-support-action">
+                            <span class="settings-icon" data-settings-icon="coffee" aria-hidden="true"></span>
+                            Buy me a coffee
+                        </a>
+                        <a href="#panel-about" class="btn whats-new-support-action whats-new-open" data-target="panel-about">
+                            <span class="settings-icon" data-settings-icon="wallet" aria-hidden="true"></span>
+                            Crypto options
+                            <span class="settings-icon" data-settings-icon="chevronRight" aria-hidden="true"></span>
+                        </a>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <header class="options-header">
+            <div class="header-content">
+                <img src="../icons/logo.svg" alt="" class="header-icon" width="56" height="56">
+                <div>
+                    <span class="header-brand">X-Posed</span>
+                    <h1 tabindex="-1">Settings</h1>
+                </div>
+            </div>
+            <p class="header-autosave">Changes save automatically</p>
+        </header>
+
+        <!-- Rate Limit Status Banner -->
+        <div class="rate-limit-banner" id="rate-limit-banner" style="display: none;">
+            <div class="rate-limit-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 1.6 21h20.8z"/><path d="M12 9.5v5M12 17.8h.01"/></svg></div>
+            <div class="rate-limit-content">
+                <span class="rate-limit-title">Rate Limited</span>
+                <span class="rate-limit-time" id="rate-limit-time"></span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="options-layout">
+        <nav class="xp-nav" id="xp-nav" aria-label="Settings sections">
+            <button class="xp-nav-item active" data-target="panel-general" type="button">
+                <span class="settings-icon" data-settings-icon="settings" aria-hidden="true"></span>
+                <span>General</span>
+            </button>
+            <button class="xp-nav-item" data-target="panel-display" type="button">
+                <span class="settings-icon" data-settings-icon="eye" aria-hidden="true"></span>
+                <span>Display</span>
+            </button>
+            <button class="xp-nav-item" data-target="panel-blocking" type="button">
+                <span class="settings-icon" data-settings-icon="shield" aria-hidden="true"></span>
+                <span>Blocking</span>
+            </button>
+            <button class="xp-nav-item" data-target="panel-stats" type="button">
+                <span class="settings-icon" data-settings-icon="chart" aria-hidden="true"></span>
+                <span>Statistics</span>
+            </button>
+            <button class="xp-nav-item" data-target="panel-cloud" type="button">
+                <span class="settings-icon" data-settings-icon="cloud" aria-hidden="true"></span>
+                <span>Cloud Cache</span>
+            </button>
+            <button class="xp-nav-item" data-target="panel-cache" type="button">
+                <span class="settings-icon" data-settings-icon="database" aria-hidden="true"></span>
+                <span>Data &amp; Cache</span>
+            </button>
+            <button class="xp-nav-item" data-target="panel-about" type="button">
+                <span class="settings-icon" data-settings-icon="infoCircle" aria-hidden="true"></span>
+                <span>About</span>
+            </button>
+            <a href="#panel-about" class="xp-nav-support" data-target="panel-about" aria-label="Support X-Posed: Ko-fi and crypto donations">
+                <span class="settings-icon" data-settings-icon="heart" aria-hidden="true"></span>
+                <span>Support X-Posed</span>
+            </a>
+        </nav>
+        <main class="options-content">
+            <div class="xp-panel active" id="panel-general">
+                <section class="options-section">
+                    <h2 class="section-title"><span class="settings-icon" data-settings-icon="settings" aria-hidden="true"></span>General</h2>
+                    <p class="section-description">The essentials for running X-Posed.</p>
+                    <div class="settings-group">
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Enable Extension</span>
+                                <span class="option-description">Turn the extension on or off globally</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-enabled" aria-label="Enable Extension" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Open Changelog on Update</span>
+                                <span class="option-description">Open the "What's New" page in a new tab after the extension updates</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-changelog-on-update" aria-label="Open Changelog on Update" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <h3 class="settings-subtitle">Troubleshooting</h3>
+                    <p class="section-hint">Enable detailed logs when you need to investigate a problem.</p>
+                    <div class="settings-group">
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Debug Mode</span>
+                                <span class="option-description">Show detailed logs in the console</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-debug" aria-label="Debug Mode">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="xp-panel" id="panel-display">
+                <section class="options-section">
+                    <h2 class="section-title"><span class="settings-icon" data-settings-icon="eye" aria-hidden="true"></span>Display</h2>
+                    <p class="section-description">Choose what appears beside an account and how you open its details.</p>
+                    <h3 class="settings-subtitle">Badges</h3>
+                    <div class="settings-group">
+                        <div class="badge-preview">
+                            <div class="option-info">
+                                <span class="option-label">Badge preview</span>
+                                <span class="option-description" id="badge-preview-description">Loading your badge preview...</span>
+                            </div>
+                            <div class="badge-preview-example" id="badge-preview-example" role="img" aria-label="Badge preview loading" hidden>
+                                <span class="badge-preview-handle">@example</span>
+                                <span class="x-info-badge" id="badge-preview-badge"></span>
+                            </div>
+                        </div>
+                        <div class="option-row">
+                            <div class="option-info">
+                                <label class="option-label" for="opt-badge-size">Badge size</label>
+                                <span class="option-description" id="badge-size-help">Choose the size of the icons and spacing beside usernames.</span>
+                            </div>
+                            <select class="option-select" id="opt-badge-size" aria-describedby="badge-size-help" disabled>
+                                <option value="small">Small</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="large">Large</option>
+                            </select>
+                        </div>
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Show badge background</span>
+                                <span class="option-description" id="badge-background-help">Turn off the background and border for icons only.</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-badge-background" aria-label="Show badge background" aria-describedby="badge-background-help" checked disabled>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Show Country Flags</span>
+                                <span class="option-description">Display country flags next to usernames</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-flags" aria-label="Show Country Flags" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Show Device Icons</span>
+                                <span class="option-description">Display device type icons (Apple, Android, Web)</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-devices" aria-label="Show Device Icons" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Show VPN/Proxy Indicator</span>
+                                <span class="option-description">Show a lock icon when location may not be accurate</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-vpn" aria-label="Show VPN/Proxy Indicator" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Show Info Icon</span>
+                                <span class="option-description">Show the circled-i at the end of each badge. Turn it off to free horizontal space on narrow screens, where X truncates long names and handles. Account details still open from the badge itself.</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-info-icon" aria-label="Show Info Icon" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <h3 class="settings-subtitle">Account details</h3>
+                    <div class="settings-group">
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Share Button</span>
+                                <span class="option-description">Show a Share button on badges to quote, reply, or post accounts to X</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-capture-button" aria-label="Share Button" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Open Account Details on Click</span>
+                                <span class="option-description">Click a badge to open its details instead of opening them on hover. Touch devices always use tap.</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-click-details" aria-label="Open Account Details on Click">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <h3 class="settings-subtitle">Navigation</h3>
+                    <div class="settings-group">
+                        <div class="option-row">
+                            <div class="option-info">
+                                <span class="option-label">Show Blocking in X’s sidebar</span>
+                                <span class="option-description">Open your filters from the Blocking link in X’s sidebar</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="opt-sidebar-link" aria-label="Show Blocking in X’s sidebar" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <p class="settings-related-note">Country source, location warnings and profile-data preferences are in <strong>Blocking → Behavior</strong>.</p>
+                </section>
+            </div>
+
+            <!-- Statistics (rendered dynamically into #stats-panel-body) -->
+            <div class="xp-panel" id="panel-stats">
+                <div id="stats-panel-body"></div>
+            </div>
+
+            <div class="xp-panel" id="panel-blocking">
+                <div id="blocking-editor"></div>
+            </div>
+
+            <!-- Community Cloud Cache -->
+            <div class="xp-panel" id="panel-cloud">
+            <section class="options-section cloud-section">
+                <h2 class="section-title">
+                    <span class="settings-icon" data-settings-icon="cloud" aria-hidden="true"></span>
+                    Community Cloud Cache
+                    <span class="beta-badge">ON BY DEFAULT</span>
+                </h2>
+
+                <div class="cloud-warning">
+                    <span class="settings-icon" data-settings-icon="warn" aria-hidden="true"></span>
+                    <div>
+                        <strong>Privacy Notice:</strong> This is on unless you turn it off, so that flags still work when X rate-limits your lookups.
+                        While it is on, public profile facts are shared with a community server, keyed by username: the country and device X reports,
+                        the account's affiliation badge, its creation date, its numeric account ID, and how many times the handle has changed. All of
+                        it is already public on the account's own profile. Nothing about <em>you</em> is sent: no identity, no browsing history, no
+                        list of what you looked at. Switching it off below stops both sharing and receiving; direct lookups keep working.
+                    </div>
+                </div>
+
+                <div class="option-row">
+                    <div class="option-info">
+                        <span class="option-label">Enable Community Cache</span>
+                        <span class="option-description">Share and receive location data with other users</span>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="opt-cloud-cache" aria-label="Enable Community Cache">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="cloud-status" id="cloud-status">
+                    <div class="cloud-status-item">
+                        <span class="status-indicator status-disabled" id="cloud-status-indicator"></span>
+                        <span id="cloud-status-text">Disabled</span>
+                    </div>
+                </div>
+
+                <div class="cloud-stats" id="cloud-stats" style="display: none;">
+                    <div class="cloud-stat cloud-stat-highlight">
+                        <span class="cloud-stat-value" id="cloud-total-entries">-</span>
+                        <span class="cloud-stat-label"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M7 18.5a4.2 4.2 0 0 1-.3-8.4 5.6 5.6 0 0 1 10.8-1.6A3.8 3.8 0 0 1 17.3 18.5z"/></svg>Total in Cloud</span>
+                    </div>
+                    <div class="cloud-stat">
+                        <span class="cloud-stat-value" id="cloud-lookups">0</span>
+                        <span class="cloud-stat-label">Your Lookups</span>
+                    </div>
+                    <div class="cloud-stat">
+                        <span class="cloud-stat-value" id="cloud-hits">0</span>
+                        <span class="cloud-stat-label">Cache Hits</span>
+                    </div>
+                    <div class="cloud-stat">
+                        <span class="cloud-stat-value" id="cloud-contributions">0</span>
+                        <span class="cloud-stat-label">You Contributed</span>
+                    </div>
+                </div>
+
+                <div class="cloud-actions" id="cloud-actions" style="display: none;">
+                    <button class="btn btn-secondary btn-cloud-sync" id="btn-sync-to-cloud">
+                        <span class="settings-icon" data-settings-icon="cloud" aria-hidden="true"></span>
+                        Sync Local Cache to Cloud
+                    </button>
+                    <span class="sync-status" id="sync-status"></span>
+                </div>
+
+                <div class="cloud-unconfigured" id="cloud-unconfigured" style="display: none;">
+                    <p><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M12 3.2 1.6 21h20.8z"/><path d="M12 9.5v5M12 17.8h.01"/></svg>Cloud cache server not configured. See the <a href="https://github.com/xaitax/x-account-location-device#community-cloud-cache" target="_blank">setup guide</a> to deploy your own server.</p>
+                </div>
+            </section>
+            </div>
+
+            <!-- Cache Management -->
+            <div class="xp-panel" id="panel-cache">
+            <section class="options-section">
+                <h2 class="section-title">
+                    <span class="settings-icon" data-settings-icon="database" aria-hidden="true"></span>
+                    Data &amp; Cache
+                </h2>
+
+                <p class="section-description">Manage locally cached account details and back up your settings and filters.</p>
+
+                <div class="cache-info">
+                    <div class="cache-stat">
+                        <span class="cache-value" id="cache-size">-</span>
+                        <span class="cache-label">Cached Users</span>
+                    </div>
+                    <div class="cache-stat">
+                        <span class="cache-value" id="cache-expiry">-</span>
+                        <span class="cache-label">Cache Duration</span>
+                    </div>
+                </div>
+
+                <p class="section-hint">Export Data includes all settings and filters, Always Show accounts, your theme, community-cache preference and local account cache. Statistics and login/session data are not included. Missing fields in older backups keep their current values.</p>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="btn-clear-cache">
+                        Clear Cache
+                    </button>
+                    <button class="btn btn-secondary" id="btn-export-cache">
+                        Export Data
+                    </button>
+                    <button class="btn btn-secondary" id="btn-import-data">
+                        Import Data
+                    </button>
+                    <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                </div>
+                <div class="import-status" id="import-status" style="display: none;"></div>
+            </section>
+            </div>
+
+            <!-- About (with Support Development footer card) -->
+            <div class="xp-panel" id="panel-about">
+            <!-- Support Development -->
+            <section class="options-section support-section">
+                <h2 class="section-title">
+                    <span class="settings-icon" data-settings-icon="heart" aria-hidden="true"></span>
+                    Keep X-Posed going
+                </h2>
+                
+                <div class="support-content">
+                    <p>X-Posed is free and open source. A coffee or a crypto donation helps cover the community cache and ongoing development. Completely optional, always appreciated.</p>
+                    <a href="https://ko-fi.com/M4M61EP5XL" target="_blank" rel="noopener" class="btn btn-primary support-button">
+                        <span class="settings-icon" data-settings-icon="coffee" aria-hidden="true"></span>
+                        Buy me a coffee on Ko-fi
+                    </a>
+                </div>
+
+                <h3 class="settings-subtitle">Prefer crypto?</h3>
+                <p class="section-hint">Choose a network below. ETH and USDC share the same receiving address on Ethereum.</p>
+                <div class="donation-wallets">
+                    <article class="donation-card" aria-labelledby="donation-btc-title">
+                        <div class="donation-heading">
+                            <h4 id="donation-btc-title">Bitcoin</h4>
+                            <span class="donation-assets">BTC</span>
+                        </div>
+                        <p class="donation-network">Network: <strong>Bitcoin</strong></p>
+                        <code class="donation-address" id="donation-btc-address" aria-label="Bitcoin receiving address">35r5XS95AuvNcLqw13ULwH8XifQD9WxddX</code>
+                        <button type="button" class="btn btn-secondary donation-copy" data-copy-address="donation-btc-address" data-copy-label="Bitcoin" aria-label="Copy Bitcoin address">Copy address</button>
+                    </article>
+                    <article class="donation-card" aria-labelledby="donation-eth-title">
+                        <div class="donation-heading">
+                            <h4 id="donation-eth-title">Ethereum</h4>
+                            <span class="donation-assets">ETH / USDC</span>
+                        </div>
+                        <p class="donation-network">Network: <strong>Ethereum</strong> <span>(USDC: ERC-20)</span></p>
+                        <code class="donation-address" id="donation-eth-address" aria-label="ETH and USDC receiving address on Ethereum">0xDeB8e90373C121EcCB9693f8Ff2D4f39ea55f5c0</code>
+                        <button type="button" class="btn btn-secondary donation-copy" data-copy-address="donation-eth-address" data-copy-label="Ethereum" aria-label="Copy ETH and USDC address on Ethereum">Copy address</button>
+                    </article>
+                </div>
+                <p class="donation-network-note"><span class="settings-icon" data-settings-icon="shield" aria-hidden="true"></span><span><strong>Check the network before sending.</strong> Send BTC on Bitcoin, and ETH or USDC on Ethereum only.</span></p>
+            </section>
+
+            <!-- About -->
+            <section class="options-section">
+                <h2 class="section-title"><span class="settings-icon" data-settings-icon="infoCircle" aria-hidden="true"></span>
+                    About
+                </h2>
+
+                <div class="about-info">
+                    <p><strong>X-Posed</strong> v<span id="version">4.3.0</span></p>
+                    <p class="text-muted">See where X users are located and what devices they use.</p>
+                    
+                    <div class="about-links">
+                        <a href="https://github.com/xaitax/x-account-location-device" target="_blank" rel="noopener">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>
+                            </svg>
+                            GitHub
+                        </a>
+                        <a href="https://github.com/xaitax/x-account-location-device/blob/main/PRIVACY.md" target="_blank" rel="noopener">
+                            <span class="settings-icon" data-settings-icon="shield" aria-hidden="true"></span>
+                            Privacy Policy
+                        </a>
+                        <a href="https://github.com/xaitax/x-account-location-device/issues" target="_blank" rel="noopener">
+                            <span class="settings-icon" data-settings-icon="infoCircle" aria-hidden="true"></span>
+                            Report Issue
+                        </a>
+                    </div>
+
+                </div>
+            </section>
+            </div>
+        </main>
+        </div>
+
+        <!-- Save Status -->
+        <div class="save-status" id="save-status" role="status" aria-live="polite">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            Settings saved
+        </div>
+    </div>
+
+    <script src="options.js" type="module"></script>
+</body>
+</html>

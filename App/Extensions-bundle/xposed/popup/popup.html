@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-Posed</title>
+    <link rel="stylesheet" href="../styles/graphite-theme.css">
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="app">
+        <header class="popup-header">
+            <div class="brand">
+                <img class="brand-logo" src="../icons/icon64.png" width="32" height="32" alt="">
+                <div class="brand-copy">
+                    <h1>X-Posed</h1>
+                    <span class="version"></span>
+                </div>
+            </div>
+            <a class="support-link" href="https://ko-fi.com/M4M61EP5XL" target="_blank" rel="noopener" aria-label="Support X-Posed on Ko-fi">
+                <span class="popup-icon" data-popup-icon="coffee" aria-hidden="true"></span>
+                Support
+            </a>
+        </header>
+
+        <main>
+            <section class="extension-state" id="extension-state" data-state="loading" aria-labelledby="extension-status">
+                <span class="state-icon popup-icon" data-popup-icon="power" aria-hidden="true"></span>
+                <div class="state-copy">
+                    <h2 id="extension-status">Loading settings</h2>
+                    <p id="extension-status-description">Checking your preferences.</p>
+                    <button class="retry-button" id="btn-retry-settings" type="button" hidden>Try again</button>
+                </div>
+                <label class="toggle" title="Enable or pause X-Posed">
+                    <input type="checkbox" id="toggle-enabled" aria-label="Enable X-Posed" aria-describedby="extension-status-description" disabled>
+                    <span class="toggle-track" aria-hidden="true"></span>
+                </label>
+            </section>
+
+            <div class="rate-limit-banner" id="rate-limit-banner" role="status" hidden>
+                <span class="popup-icon" data-popup-icon="warn" aria-hidden="true"></span>
+                <div class="rate-limit-content">
+                    <span class="rate-limit-title">Lookups temporarily paused</span>
+                    <span id="rate-limit-time"></span>
+                </div>
+            </div>
+
+            <section class="cache-summary" id="cache-summary" data-mode="loading" aria-labelledby="hero-cap">
+                <div class="cache-overview">
+                    <div class="cache-details">
+                        <h2 class="cache-heading">
+                            <span class="popup-icon" id="cache-kind" data-popup-icon="cloud" aria-hidden="true"></span>
+                            <span id="hero-cap">Account cache</span>
+                        </h2>
+                        <span class="cache-number" id="stat-community">...</span>
+                    </div>
+                    <span class="cache-art" aria-hidden="true">
+                        <span class="cache-art-orbit"></span>
+                        <span class="cache-art-globe" data-popup-icon="globe"></span>
+                    </span>
+                </div>
+                <p class="cache-caption" id="hero-sub">Loading cached account count.</p>
+            </section>
+
+            <div class="primary-actions">
+                <button class="button button-primary" id="btn-blocking" type="button">
+                    <span class="popup-icon" data-popup-icon="shield" aria-hidden="true"></span>
+                    Manage filters
+                </button>
+                <button class="button button-secondary" id="btn-options" type="button">
+                    <span class="popup-icon" data-popup-icon="settings" aria-hidden="true"></span>
+                    All settings
+                </button>
+            </div>
+
+            <fieldset class="quick-controls">
+                <legend>Show on posts</legend>
+                <div class="quick-grid">
+                    <label class="quick-option">
+                        <span>Country flags</span>
+                        <span class="toggle toggle-small">
+                            <input type="checkbox" id="toggle-flags" disabled>
+                            <span class="toggle-track" aria-hidden="true"></span>
+                        </span>
+                    </label>
+                    <label class="quick-option">
+                        <span>Device icons</span>
+                        <span class="toggle toggle-small">
+                            <input type="checkbox" id="toggle-devices" disabled>
+                            <span class="toggle-track" aria-hidden="true"></span>
+                        </span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <details class="more-controls" id="more-controls">
+                <summary>
+                    <span>More controls</span>
+                    <span class="summary-chevron popup-icon" data-popup-icon="chevronRight" aria-hidden="true"></span>
+                </summary>
+                <div class="more-content">
+                    <fieldset class="control-group">
+                        <legend>On-post details</legend>
+                        <label class="control-row">
+                            <span>Location warning icon</span>
+                            <span class="toggle toggle-small">
+                                <input type="checkbox" id="toggle-vpn" disabled>
+                                <span class="toggle-track" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                        <label class="control-row">
+                            <span>Info icon</span>
+                            <span class="toggle toggle-small">
+                                <input type="checkbox" id="toggle-info-icon" disabled>
+                                <span class="toggle-track" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                        <label class="control-row">
+                            <span>Share button</span>
+                            <span class="toggle toggle-small">
+                                <input type="checkbox" id="toggle-capture-button" disabled>
+                                <span class="toggle-track" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                        <label class="control-row">
+                            <span>Open details on click</span>
+                            <span class="toggle toggle-small">
+                                <input type="checkbox" id="toggle-click-details" aria-describedby="click-details-hint" disabled>
+                                <span class="toggle-track" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                        <p class="control-hint" id="click-details-hint">Turn off to open details on hover. Touch devices always use tap.</p>
+                    </fieldset>
+
+                    <fieldset class="control-group">
+                        <legend>Filtering preferences</legend>
+                        <label class="control-row">
+                            <span>Use device country</span>
+                            <span class="toggle toggle-small">
+                                <input type="checkbox" id="toggle-flag-device" aria-describedby="device-country-hint" disabled>
+                                <span class="toggle-track" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                        <p class="control-hint" id="device-country-hint">Use the connected app's country when available. Otherwise, use account location.</p>
+                        <label class="control-row">
+                            <span>Show warned accounts</span>
+                            <span class="toggle toggle-small">
+                                <input type="checkbox" id="toggle-vpn-users" aria-describedby="warned-accounts-hint" disabled>
+                                <span class="toggle-track" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                        <p class="control-hint" id="warned-accounts-hint">Other saved filters still apply. Turn off to hide or highlight accounts with X location warnings.</p>
+                    </fieldset>
+
+                    <fieldset class="control-group">
+                        <legend>Navigation</legend>
+                        <label class="control-row">
+                            <span>Blocking link in X sidebar</span>
+                            <span class="toggle toggle-small">
+                                <input type="checkbox" id="toggle-sidebar-link" disabled>
+                                <span class="toggle-track" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                    </fieldset>
+
+                    <div class="cache-maintenance">
+                        <button class="clear-cache-button" id="btn-clear-cache" type="button" aria-expanded="false" aria-controls="cache-clear-confirm">
+                            <span class="popup-icon" data-popup-icon="database" aria-hidden="true"></span>
+                            Clear local cache
+                        </button>
+                        <div class="cache-clear-confirm" id="cache-clear-confirm" role="group" aria-labelledby="clear-cache-title" hidden>
+                            <h3 id="clear-cache-title">Clear cached accounts?</h3>
+                            <p>Saved filters and preferences stay unchanged. Account information will load again as you browse.</p>
+                            <div class="confirm-actions">
+                                <button class="button button-danger" id="btn-confirm-clear" type="button">Clear cache</button>
+                                <button class="button button-secondary" id="btn-cancel-clear" type="button">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <p class="popup-status" id="popup-status" role="status" aria-live="polite" hidden></p>
+        </main>
+
+        <footer class="popup-footer">
+            <span>Made for a clearer timeline.</span>
+            <nav aria-label="Project information">
+                <a href="https://github.com/xaitax/x-account-location-device" target="_blank" rel="noopener">GitHub</a>
+                <a href="https://github.com/xaitax/x-account-location-device/blob/main/PRIVACY.md" id="link-privacy" target="_blank" rel="noopener">Privacy</a>
+            </nav>
+        </footer>
+    </div>
+    <script src="popup.js" type="module"></script>
+</body>
+</html>

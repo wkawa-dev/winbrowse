@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Twitter cleaner Options</title>
+    <style>
+        #status {
+            margin: 10px 0;
+        }
+        label {
+          display: flex;
+          align-items: center;
+        }
+        label + label {
+          margin-top: 5px;
+        }
+        #save {
+          margin-top: 10px;
+        }
+    </style>
+  </head>
+  <body>
+    <label>
+      <input type="checkbox" id="hide-trending" />
+      Hide "Trending" section
+    </label>
+    <label>
+      <input type="checkbox" id="hide-porn" />
+      Hide porn spam bots
+    </label>
+    <label>
+      <input type="checkbox" id="enable-logging" />
+      Enable logging
+    </label>
+    <div id="status"></div>
+    <button id="save">Save</button>
+    <script src="options.js"></script>
+  </body>
+</html>

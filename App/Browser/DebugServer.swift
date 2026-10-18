@@ -1,0 +1,121 @@
+#if DEBUG
+import Foundation
+import Network
+import WebKit
+
+/// Debug-only control port for driving the simulator from a terminal:
+///   curl 'localhost:8899/open?url=https://m.youtube.com'
+///   curl -d 'document.title' 'localhost:8899/eval?world=page'        (world: page | ext:<id> | ubo | bg:<id>)
+///   curl 'localhost:8899/state'
+@MainActor
+final class DebugServer {
+    static let shared = DebugServer()
+    private var listener: NWListener?
+
+    func start(port: UInt16 = 8899) {
+        guard listener == nil, let l = try? NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: port)!) else { return }
+        l.newConnectionHandler = { c in
+            c.start(queue: .main)
+            Self.receive(c, buffer: Data())
+        }
+        l.start(queue: .main)
+        listener = l
+        NSLog("[debug] control port \(port)")
+    }
+
+    private nonisolated static func receive(_ c: NWConnection, buffer: Data) {
+        c.receive(minimumIncompleteLength: 1, maximumLength: 1 << 20) { data, _, done, _ in
+            var buf = buffer
+            if let data { buf.append(data) }
+            if let req = parse(buf) {
+                Task { @MainActor in
+                    let body = await DebugServer.shared.handle(req.path, req.query, req.body)
+                    let out = "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)"
+                    c.send(content: Data(out.utf8), completion: .contentProcessed { _ in c.cancel() })
+                }
+            } else if !done {
+                receive(c, buffer: buf)
+            } else { c.cancel() }
+        }
+    }
+
+    private nonisolated static func parse(_ d: Data) -> (path: String, query: [String: String], body: String)? {
+        guard let s = String(data: d, encoding: .utf8), let headEnd = s.range(of: "\r\n\r\n") else { return nil }
+        let head = s[..<headEnd.lowerBound]
+        let body = String(s[headEnd.upperBound...])
+        let lines = head.split(separator: "\r\n")
+        guard let first = lines.first else { return nil }
+        let parts = first.split(separator: " ")
+        guard parts.count >= 2 else { return nil }
+        var len = 0
+        for l in lines.dropFirst() where l.lowercased().hasPrefix("content-length:") { len = Int(l.split(separator: ":")[1].trimmingCharacters(in: .whitespaces)) ?? 0 }
+        if body.utf8.count < len { return nil }
+        let comps = URLComponents(string: String(parts[1]))
+        var q: [String: String] = [:]
+        for i in comps?.queryItems ?? [] { q[i.name] = i.value ?? "" }
+        return (comps?.path ?? "/", q, body)
+    }
+
+    private func handle(_ path: String, _ q: [String: String], _ body: String) async -> String {
+        let store = BrowserStore.shared
+        switch path {
+        case "/open":
+            guard let s = q["url"] else { return "missing url" }
+            if q["new"] != nil { store.newTab(url: URL(string: s)) } else { store.open(s) }
+            return "ok"
+        case "/state":
+            return jsonString([
+                "tabs": store.extTabs.map(\.json),
+                "ubo": ContentBlocker.shared.status,
+                "rules": ContentBlocker.shared.activeRuleCount,
+            ])
+        case "/eval":
+            let world = q["world"] ?? "page"
+            if world.hasPrefix("bg:") {
+                return await ExtensionHost.shared.debugEvalBackground(String(world.dropFirst(3)), body)
+            }
+            guard let w = store.active?.webView else { return "no webview" }
+            let cw: WKContentWorld
+            if world == "page" { cw = .page }
+            else if world == "ubo" { cw = UBOScripts.shared.world }
+            else if world.hasPrefix("ext:"), let e = ExtensionHost.shared.ext(String(world.dropFirst(4))) { cw = e.world }
+            else { return "bad world" }
+            do {
+                let r = try await w.callAsyncJavaScript(body, arguments: [:], in: nil, contentWorld: cw)
+                return r.map { jsonString(jsonSafe($0)) } ?? "undefined"
+            } catch { return "error: \(error)" }
+        case "/menu":
+            Router.shared.menuOpen.toggle(); return "ok"
+        case "/route":
+            let r: [String: Route] = ["tabs": .tabs, "settings": .settings, "extensions": .extensions, "ublock": .ublock, "history": .history]
+            if let x = r[q["r"] ?? ""] { Router.shared.push(x) } else { Router.shared.popToRoot(); store.presentedExtensionPage = nil }
+            return "ok"
+        case "/popup":
+            guard let e = ExtensionHost.shared.ext(q["ext"] ?? ""), let p = q["page"] ?? e.popup ?? e.options else { return "no" }
+            store.extPresent(ext: e, page: p); return "ok"
+        case "/ubo":
+            if let site = q["site"] { ContentBlocker.shared.setSite(site, disabled: q["off"] == "1") }
+            if let t = store.active { t.rebuildWebView(loading: t.url) }
+            return "ok"
+        case "/ext":
+            if let id = q["id"] { ExtensionHost.shared.setEnabled(id, q["on"] == "1"); WebViewFactory.shared.rebuildScripts(); store.active?.webView?.reload() }
+            return "ok"
+        case "/select":
+            if let i = Int(q["i"] ?? ""), i < store.tabs.count { store.select(store.tabs[i]) }
+            return "ok"
+        default:
+            return "unknown"
+        }
+    }
+}
+
+extension ExtensionHost {
+    func debugEvalBackground(_ id: String, _ code: String) async -> String {
+        guard let w = backgroundWebView(id) else { return "no background" }
+        do {
+            let r = try await w.callAsyncJavaScript(code, arguments: [:], in: nil, contentWorld: .page)
+            return r.map { jsonString(jsonSafe($0)) } ?? "undefined"
+        } catch { return "error: \(error)" }
+    }
+}
+#endif

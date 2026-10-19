@@ -136,43 +136,43 @@ scripts/update-extensions.sh
 
 ## Developer Control Port (`localhost:8899`)
 
-When running in `DEBUG` configuration, WinBrowse hosts an embedded HTTP server on `localhost:8899` to assist with testing and terminal automation:
+When running in `DEBUG` configuration, WinBrowse hosts an embedded HTTP server on `localhost:8899` (loopback only) to assist with testing and terminal automation. Every request must send the per-run token from `/tmp/winbrowse-debug-token` in an `X-Debug-Token` header:
 
 ```bash
 # Open a URL in the active tab
-curl 'localhost:8899/open?url=https://en.wikipedia.org'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/open?url=https://en.wikipedia.org'
 
 # Open a URL in a new tab
-curl 'localhost:8899/open?url=https://news.ycombinator.com&new=1'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/open?url=https://news.ycombinator.com&new=1'
 
 # Inspect browser state (open tabs, active tab, uBO status, rule count)
-curl 'localhost:8899/state'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/state'
 
 # Execute JavaScript in page world
-curl -d 'document.title' 'localhost:8899/eval?world=page'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" -d 'document.title' 'localhost:8899/eval?world=page'
 
 # Execute JavaScript in an extension content script world
-curl -d 'chrome.runtime.id' 'localhost:8899/eval?world=ext:sponsorblock'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" -d 'chrome.runtime.id' 'localhost:8899/eval?world=ext:sponsorblock'
 
 # Execute JavaScript in an extension background service worker
-curl -d 'console.log("ping from CLI")' 'localhost:8899/eval?world=bg:sponsorblock'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" -d 'console.log("ping from CLI")' 'localhost:8899/eval?world=bg:sponsorblock'
 
 # Toggle bottom Metro menu
-curl 'localhost:8899/menu'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/menu'
 
 # Navigate routes (tabs, settings, extensions, ublock, history)
-curl 'localhost:8899/route?r=tabs'
-curl 'localhost:8899/route?r=ublock'
-curl 'localhost:8899/route'          # pops back to browser view
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/route?r=tabs'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/route?r=ublock'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/route'          # pops back to browser view
 
 # Trigger extension popup modal
-curl 'localhost:8899/popup?ext=sponsorblock'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/popup?ext=sponsorblock'
 
 # Toggle uBlock Origin for a specific site
-curl 'localhost:8899/ubo?site=example.com&off=1'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/ubo?site=example.com&off=1'
 
 # Select tab by index
-curl 'localhost:8899/select?i=0'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/select?i=0'
 ```
 
 ---

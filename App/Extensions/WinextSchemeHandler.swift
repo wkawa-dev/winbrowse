@@ -75,6 +75,16 @@ final class WinextSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 }
 
+/// Refuses redirects to hosts the extension has no permission for.
+private final class RedirectGuard: NSObject, URLSessionTaskDelegate {
+    let ext: WebExtension
+    init(ext: WebExtension) { self.ext = ext }
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(request.url.map(ext.canAccess) == true ? request : nil)
+    }
+}
+
 /// Cross-origin fetch for extension pages, with the browser's cookies when credentials: 'include'.
 enum NativeFetch {
     static let session: URLSession = {
@@ -88,8 +98,9 @@ enum NativeFetch {
     }()
 
     @MainActor
-    static func perform(_ d: [String: Any], userAgent: String) async -> String {
+    static func perform(_ d: [String: Any], userAgent: String, ext: WebExtension?) async -> String {
         guard let s = d["url"] as? String, let url = URL(string: s) else { return jsonString(["error": "bad url"]) }
+        guard let ext, ext.canAccess(url) else { return jsonString(["error": "host not permitted by extension host_permissions"]) }
         var req = URLRequest(url: url)
         req.httpMethod = d["method"] as? String ?? "GET"
         for (k, v) in d["headers"] as? [String: String] ?? [:] { req.setValue(v, forHTTPHeaderField: k) }
@@ -112,7 +123,7 @@ enum NativeFetch {
             }
         }
         do {
-            let (data, resp) = try await session.data(for: req)
+            let (data, resp) = try await session.data(for: req, delegate: RedirectGuard(ext: ext))
             let http = resp as? HTTPURLResponse
             var headers: [String: String] = [:]
             for (k, v) in http?.allHeaderFields ?? [:] { headers[String(describing: k).lowercased()] = String(describing: v) }

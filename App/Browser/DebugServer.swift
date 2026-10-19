@@ -1,26 +1,40 @@
 #if DEBUG
 import Foundation
 import Network
+import Security
 import WebKit
 
 /// Debug-only control port for driving the simulator from a terminal:
-///   curl 'localhost:8899/open?url=https://m.youtube.com'
-///   curl -d 'document.title' 'localhost:8899/eval?world=page'        (world: page | ext:<id> | ubo | bg:<id>)
-///   curl 'localhost:8899/state'
+///   T=$(cat /tmp/winbrowse-debug-token)
+///   curl -H "X-Debug-Token: $T" 'localhost:8899/open?url=https://m.youtube.com'
+///   curl -H "X-Debug-Token: $T" -d 'document.title' 'localhost:8899/eval?world=page'   (world: page | ext:<id> | ubo | bg:<id>)
+///   curl -H "X-Debug-Token: $T" 'localhost:8899/state'
+/// Bound to loopback only; every request needs the per-run token (also logged at start) and a loopback Host header.
 @MainActor
 final class DebugServer {
     static let shared = DebugServer()
     private var listener: NWListener?
+    private nonisolated static let tokenPath = "/tmp/winbrowse-debug-token"
+    private nonisolated static let token: String = {
+        var b = [UInt8](repeating: 0, count: 24)
+        _ = SecRandomCopyBytes(kSecRandomDefault, b.count, &b)
+        let t = b.map { String(format: "%02x", $0) }.joined()
+        FileManager.default.createFile(atPath: tokenPath, contents: Data(t.utf8), attributes: [.posixPermissions: 0o600])
+        return t
+    }()
 
     func start(port: UInt16 = 8899) {
-        guard listener == nil, let l = try? NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: port)!) else { return }
+        let params = NWParameters.tcp
+        params.requiredInterfaceType = .loopback
+        guard listener == nil, let l = try? NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!) else { return }
+        _ = Self.token
         l.newConnectionHandler = { c in
             c.start(queue: .main)
             Self.receive(c, buffer: Data())
         }
         l.start(queue: .main)
         listener = l
-        NSLog("[debug] control port \(port)")
+        NSLog("[debug] control port \(port) (loopback, token in \(Self.tokenPath))")
     }
 
     private nonisolated static func receive(_ c: NWConnection, buffer: Data) {
@@ -29,8 +43,9 @@ final class DebugServer {
             if let data { buf.append(data) }
             if let req = parse(buf) {
                 Task { @MainActor in
-                    let body = await DebugServer.shared.handle(req.path, req.query, req.body)
-                    let out = "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)"
+                    let ok = req.token == token && ["localhost", "127.0.0.1", "[::1]"].contains(req.host)
+                    let body = ok ? await DebugServer.shared.handle(req.path, req.query, req.body) : "forbidden"
+                    let out = "HTTP/1.1 \(ok ? "200 OK" : "403 Forbidden")\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)"
                     c.send(content: Data(out.utf8), completion: .contentProcessed { _ in c.cancel() })
                 }
             } else if !done {
@@ -39,7 +54,7 @@ final class DebugServer {
         }
     }
 
-    private nonisolated static func parse(_ d: Data) -> (path: String, query: [String: String], body: String)? {
+    private nonisolated static func parse(_ d: Data) -> (path: String, query: [String: String], body: String, token: String, host: String)? {
         guard let s = String(data: d, encoding: .utf8), let headEnd = s.range(of: "\r\n\r\n") else { return nil }
         let head = s[..<headEnd.lowerBound]
         let body = String(s[headEnd.upperBound...])
@@ -47,13 +62,19 @@ final class DebugServer {
         guard let first = lines.first else { return nil }
         let parts = first.split(separator: " ")
         guard parts.count >= 2 else { return nil }
-        var len = 0
-        for l in lines.dropFirst() where l.lowercased().hasPrefix("content-length:") { len = Int(l.split(separator: ":")[1].trimmingCharacters(in: .whitespaces)) ?? 0 }
+        var len = 0, tok = "", host = ""
+        for l in lines.dropFirst() {
+            guard let c = l.firstIndex(of: ":") else { continue }
+            let name = l[..<c].lowercased(), val = l[l.index(after: c)...].trimmingCharacters(in: .whitespaces)
+            if name == "content-length" { len = Int(val) ?? 0 }
+            else if name == "x-debug-token" { tok = val }
+            else if name == "host" { host = val.lowercased().replacingOccurrences(of: #":\d+$"#, with: "", options: .regularExpression) }
+        }
         if body.utf8.count < len { return nil }
         let comps = URLComponents(string: String(parts[1]))
         var q: [String: String] = [:]
         for i in comps?.queryItems ?? [] { q[i.name] = i.value ?? "" }
-        return (comps?.path ?? "/", q, body)
+        return (comps?.path ?? "/", q, body, tok, host)
     }
 
     private func handle(_ path: String, _ q: [String: String], _ body: String) async -> String {

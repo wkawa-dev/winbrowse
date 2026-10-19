@@ -95,6 +95,17 @@ struct WebExtension: Identifiable {
                             homepage: m["homepage_url"] as? String)
     }
 
+    /// Whether `url` falls under the manifest's `host_permissions` (MV3) or URL-shaped `permissions` (MV2).
+    func canAccess(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return false }
+        let patterns = ((manifest["host_permissions"] as? [String]) ?? [])
+            + ((manifest["permissions"] as? [Any]) ?? []).compactMap { $0 as? String }.filter { $0 == "<all_urls>" || $0.contains("://") }
+        let href = url.absoluteString
+        return patterns.contains { p in
+            href.range(of: MatchPattern.regex(p), options: .regularExpression) != nil
+        }
+    }
+
     func file(_ path: String) -> String {
         let p = path.trimmingCharacters(in: CharacterSet(charactersIn: "/")).replacingOccurrences(of: "./", with: "")
         return (try? String(contentsOf: dir.appendingPathComponent(p), encoding: .utf8)) ?? ""

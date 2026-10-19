@@ -527,7 +527,7 @@ extension ExtensionHost: WKScriptMessageHandlerWithReply {
             return nil
 
         case "fetch":
-            return await NativeFetch.perform(data, userAgent: userAgent)
+            return await NativeFetch.perform(data, userAgent: userAgent, ext: ext(id))
         case "crypto.digest":
             guard let b64 = data["data"] as? String, let d = Data(base64Encoded: b64) else { return nil }
             let alg = data["alg"] as? String ?? "SHA-256"

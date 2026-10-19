@@ -4524,117 +4524,7 @@ function xmlPrune(
     });
 }
 
-function zeta_5568a1592f15406195840f0c50fbb08a() { // popads-dummy.js
-(function() {
-    'use strict';
-    delete window.PopAds;
-    delete window.popns;
-    Object.defineProperties(window, {
-        PopAds: { value: {} },
-        popns: { value: {} }
-    });
-})();
-}
-
-function zeta_8043419d36614e84951b80344626399f() { // fingerprint2.js
-// Reference:
-// https://github.com/fingerprintjs/fingerprintjs/tree/v2
-
-(function() {
-    'use strict';
-    const hex32 = len => {
-        return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
-            .toString(16)
-            .slice(-len)
-            .padStart(len, '0');
-    };
-    const browserId = `${hex32(8)}${hex32(8)}${hex32(8)}${hex32(8)}`;
-    const fp2 = function(){};
-    fp2.get = function(opts, cb) {
-        if ( !cb  ) { cb = opts; }
-        setTimeout(( ) => { cb([]); }, 1);
-    };
-    fp2.getPromise = function() {
-        return Promise.resolve([]);
-    };
-    fp2.getV18 = function() {
-        return browserId;
-    };
-    fp2.x64hash128 = function() {
-        return browserId;
-    };
-    fp2.prototype = {
-        get: function(opts, cb) {
-            if ( !cb  ) { cb = opts; }
-            setTimeout(( ) => { cb(browserId, []); }, 1);
-        },
-    };
-    self.Fingerprint2 = self.Fingerprint = fp2;
-})();
-}
-
-function zeta_8d8bc43183c44079b4bef742788feee3() { // nofab.js
-(function() {
-    'use strict';
-    const noopfn = function() {
-    };
-    const Fab = function() {};
-    Fab.prototype.check = noopfn;
-    Fab.prototype.clearEvent = noopfn;
-    Fab.prototype.emitEvent = noopfn;
-    Fab.prototype.on = function(a, b) {
-        if ( !a ) { b(); }
-        return this;
-    };
-    Fab.prototype.onDetected = function() {
-        return this;
-    };
-    Fab.prototype.onNotDetected = function(a) {
-        a();
-        return this;
-    };
-    Fab.prototype.setOption = noopfn;
-    Fab.prototype.options = {
-        set: noopfn,
-        get: noopfn,
-    };
-    const fab = new Fab();
-    const getSetFab = {
-        get: function() { return Fab; },
-        set: function() {}
-    };
-    const getsetfab = {
-        get: function() { return fab; },
-        set: function() {}
-    };
-    if ( window.hasOwnProperty('FuckAdBlock') ) { window.FuckAdBlock = Fab; }
-    else { Object.defineProperty(window, 'FuckAdBlock', getSetFab); }
-    if ( window.hasOwnProperty('BlockAdBlock') ) { window.BlockAdBlock = Fab; }
-    else { Object.defineProperty(window, 'BlockAdBlock', getSetFab); }
-    if ( window.hasOwnProperty('SniffAdBlock') ) { window.SniffAdBlock = Fab; }
-    else { Object.defineProperty(window, 'SniffAdBlock', getSetFab); }
-    if ( window.hasOwnProperty('fuckAdBlock') ) { window.fuckAdBlock = fab; }
-    else { Object.defineProperty(window, 'fuckAdBlock', getsetfab); }
-    if ( window.hasOwnProperty('blockAdBlock') ) { window.blockAdBlock = fab; }
-    else { Object.defineProperty(window, 'blockAdBlock', getsetfab); }
-    if ( window.hasOwnProperty('sniffAdBlock') ) { window.sniffAdBlock = fab; }
-    else { Object.defineProperty(window, 'sniffAdBlock', getsetfab); }
-})();
-}
-
-function zeta_9a4cdd8c9e514a3181910115aba7893f() { // noeval.js
-(function() {
-    'use strict';
-    const log = console.log.bind(console);
-    window.eval = new Proxy(window.eval, {          // jshint ignore: line
-        apply: function(target, thisArg, args) {
-            log(`Document tried to eval... ${args[0]}\n`);
-        }
-    });
-})();
-}
-
-function zeta_aa7888e7888a4283a1c0d895c9c3d1e6() { // google-ima.js
+function zeta_19f0cd32bb844b998a8a895fd108f410() { // google-ima.js
 'use strict';
 
 
@@ -5263,7 +5153,44 @@ if (!window.google || !window.google.ima || !window.google.ima.VERSION) {
 }
 }
 
-function zeta_e4605b07b3ce439b88cbb63977d87192() { // nobab2.js
+function zeta_1ca22f0f92be4e63805de20b7d20779b() { // fingerprint2.js
+// Reference:
+// https://github.com/fingerprintjs/fingerprintjs/tree/v2
+
+(function() {
+    'use strict';
+    const hex32 = len => {
+        return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
+            .toString(16)
+            .slice(-len)
+            .padStart(len, '0');
+    };
+    const browserId = `${hex32(8)}${hex32(8)}${hex32(8)}${hex32(8)}`;
+    const fp2 = function(){};
+    fp2.get = function(opts, cb) {
+        if ( !cb  ) { cb = opts; }
+        setTimeout(( ) => { cb([]); }, 1);
+    };
+    fp2.getPromise = function() {
+        return Promise.resolve([]);
+    };
+    fp2.getV18 = function() {
+        return browserId;
+    };
+    fp2.x64hash128 = function() {
+        return browserId;
+    };
+    fp2.prototype = {
+        get: function(opts, cb) {
+            if ( !cb  ) { cb = opts; }
+            setTimeout(( ) => { cb(browserId, []); }, 1);
+        },
+    };
+    self.Fingerprint2 = self.Fingerprint = fp2;
+})();
+}
+
+function zeta_28ab5c1e9fd944d1a2d4c249bdd9e188() { // nobab2.js
 (function() {
     'use strict';
     const script = document.currentScript;
@@ -5284,6 +5211,79 @@ function zeta_e4605b07b3ce439b88cbb63977d87192() { // nobab2.js
     );
     if ( re.test(src) === false ) { return; }
     window.nH7eXzOsG = 858;
+})();
+}
+
+function zeta_804d60bcecd440d48b2cfbaf2763674a() { // noeval.js
+(function() {
+    'use strict';
+    const log = console.log.bind(console);
+    window.eval = new Proxy(window.eval, {          // jshint ignore: line
+        apply: function(target, thisArg, args) {
+            log(`Document tried to eval... ${args[0]}\n`);
+        }
+    });
+})();
+}
+
+function zeta_8b4c523ce3e14eb2a5e40407180c5b0a() { // popads-dummy.js
+(function() {
+    'use strict';
+    delete window.PopAds;
+    delete window.popns;
+    Object.defineProperties(window, {
+        PopAds: { value: {} },
+        popns: { value: {} }
+    });
+})();
+}
+
+function zeta_df82ae693e224ab08cf91f2052590512() { // nofab.js
+(function() {
+    'use strict';
+    const noopfn = function() {
+    };
+    const Fab = function() {};
+    Fab.prototype.check = noopfn;
+    Fab.prototype.clearEvent = noopfn;
+    Fab.prototype.emitEvent = noopfn;
+    Fab.prototype.on = function(a, b) {
+        if ( !a ) { b(); }
+        return this;
+    };
+    Fab.prototype.onDetected = function() {
+        return this;
+    };
+    Fab.prototype.onNotDetected = function(a) {
+        a();
+        return this;
+    };
+    Fab.prototype.setOption = noopfn;
+    Fab.prototype.options = {
+        set: noopfn,
+        get: noopfn,
+    };
+    const fab = new Fab();
+    const getSetFab = {
+        get: function() { return Fab; },
+        set: function() {}
+    };
+    const getsetfab = {
+        get: function() { return fab; },
+        set: function() {}
+    };
+    if ( window.hasOwnProperty('FuckAdBlock') ) { window.FuckAdBlock = Fab; }
+    else { Object.defineProperty(window, 'FuckAdBlock', getSetFab); }
+    if ( window.hasOwnProperty('BlockAdBlock') ) { window.BlockAdBlock = Fab; }
+    else { Object.defineProperty(window, 'BlockAdBlock', getSetFab); }
+    if ( window.hasOwnProperty('SniffAdBlock') ) { window.SniffAdBlock = Fab; }
+    else { Object.defineProperty(window, 'SniffAdBlock', getSetFab); }
+    if ( window.hasOwnProperty('fuckAdBlock') ) { window.fuckAdBlock = fab; }
+    else { Object.defineProperty(window, 'fuckAdBlock', getsetfab); }
+    if ( window.hasOwnProperty('blockAdBlock') ) { window.blockAdBlock = fab; }
+    else { Object.defineProperty(window, 'blockAdBlock', getsetfab); }
+    if ( window.hasOwnProperty('sniffAdBlock') ) { window.sniffAdBlock = fab; }
+    else { Object.defineProperty(window, 'sniffAdBlock', getsetfab); }
 })();
 }
 
@@ -5329,11 +5329,11 @@ scriptletGlobals.origins = (( ) => {
     return out;
 })();
 
-scriptletGlobals.functionRefs = /* 59 */ [trustedEditInboundObject,adjustSetTimeout,jsonPruneFetchResponse,jsonPruneXhrResponse,trustedReplaceXhrResponse,trustedReplaceFetchResponse,trustedPreventDomBypass,jsonPrune,jsonEdit,jsonlEditXhrResponse,noWindowOpenIf,setConstant,abortCurrentScript,preventXhr,preventSetTimeout,preventFetch,trustedReplaceArgument,removeAttr,trustedOverrideElementMethod,abortOnPropertyRead,trustedReplaceOutboundText,trustedSuppressNativeMethod,preventAddEventListener,abortOnStackTrace,preventSetInterval,preventInnerHTML,adjustSetInterval,zeta_8043419d36614e84951b80344626399f,trustedSetConstant,jsonEditFetchResponse,zeta_9a4cdd8c9e514a3181910115aba7893f,abortOnPropertyWrite,noWebrtc,zeta_8d8bc43183c44079b4bef742788feee3,zeta_5568a1592f15406195840f0c50fbb08a,preventRequestAnimationFrame,noEvalIf,preventBab,trustedPreventFetch,disableNewtabLinks,trustedJsonEditFetchResponse,editObjectOnSetter,trustedJsonEdit,trustedJsonEditXhrResponse,preventClipboardWrite,jsonEditXhrResponse,xmlPrune,m3uPrune,trustedPreventXhr,spoofCSS,zeta_aa7888e7888a4283a1c0d895c9c3d1e6,alertBuster,preventCanvas,mpegdashPrune,jsonEditFetchRequest,proxyApplyConfig,jsonlEditFetchResponse,evaldataPrune,zeta_e4605b07b3ce439b88cbb63977d87192];
+scriptletGlobals.functionRefs = /* 59 */ [trustedEditInboundObject,adjustSetTimeout,jsonPruneFetchResponse,jsonPruneXhrResponse,trustedReplaceXhrResponse,trustedReplaceFetchResponse,trustedPreventDomBypass,jsonPrune,jsonEdit,jsonlEditXhrResponse,noWindowOpenIf,setConstant,abortCurrentScript,preventXhr,preventSetTimeout,preventFetch,trustedReplaceArgument,removeAttr,trustedOverrideElementMethod,abortOnPropertyRead,trustedReplaceOutboundText,trustedSuppressNativeMethod,preventAddEventListener,abortOnStackTrace,preventSetInterval,preventInnerHTML,adjustSetInterval,zeta_1ca22f0f92be4e63805de20b7d20779b,trustedSetConstant,jsonEditFetchResponse,zeta_804d60bcecd440d48b2cfbaf2763674a,abortOnPropertyWrite,noWebrtc,zeta_df82ae693e224ab08cf91f2052590512,zeta_8b4c523ce3e14eb2a5e40407180c5b0a,preventRequestAnimationFrame,noEvalIf,preventBab,trustedPreventFetch,disableNewtabLinks,trustedJsonEditFetchResponse,editObjectOnSetter,trustedJsonEdit,trustedJsonEditXhrResponse,preventClipboardWrite,jsonEditXhrResponse,xmlPrune,m3uPrune,trustedPreventXhr,spoofCSS,zeta_19f0cd32bb844b998a8a895fd108f410,alertBuster,preventCanvas,mpegdashPrune,jsonEditFetchRequest,proxyApplyConfig,jsonlEditFetchResponse,evaldataPrune,zeta_28ab5c1e9fd944d1a2d4c249bdd9e188];
 
 /******************************************************************************/
 
 // End of local scope
-})("eb67c4fa-700a-4c20-bf4f-852ab9b7ca91");
+})("74f9600a-13a3-47bc-b856-40c6da158b89");
 
 void 0;

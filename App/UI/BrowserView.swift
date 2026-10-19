@@ -261,18 +261,13 @@ struct AddressField: UIViewRepresentable {
                 field.replace(r, withText: "")
                 self.edited(field)
             }
-            // UIPasteControl pastes without iOS's "Allow Paste" prompt, which reading UIPasteboard directly would trigger.
-            let config = UIPasteControl.Configuration()
-            config.displayMode = .iconOnly
-            config.cornerStyle = .fixed
-            config.cornerRadius = 0
-            config.baseBackgroundColor = .white
-            config.baseForegroundColor = parent.tint
-            let paste = UIPasteControl(configuration: config)
-            paste.target = field
-            paste.accessibilityIdentifier = "address.paste"
-            paste.widthAnchor.constraint(equalToConstant: 36).isActive = true
-            paste.heightAnchor.constraint(equalToConstant: 36).isActive = true
+            let paste = button("doc.on.clipboard", "paste", "address.paste") { [weak self, weak field] in
+                guard let self, let field, let r = field.selectedTextRange else { return }
+                let board = UIPasteboard.general
+                guard let t = board.string ?? board.url?.absoluteString, !t.isEmpty else { return }
+                field.replace(r, withText: t)
+                self.edited(field)
+            }
             self.cut = cut
             let stack = UIStackView(arrangedSubviews: [cut, paste])
             stack.spacing = 0

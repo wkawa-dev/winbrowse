@@ -94,7 +94,7 @@ final class DebugServer {
             let sel = f.selectedTextRange.flatMap { f.text(in: $0) } ?? ""
             return jsonString(["text": f.text ?? "", "selected": sel, "editing": f.isFirstResponder, "rightView": f.rightView.map { "\($0.frame)" } ?? "none"])
         case "/menu":
-            Router.shared.menuOpen.toggle(); return "ok"
+            Router.shared.toggleMenu(); return "ok"
         case "/route":
             let r: [String: Route] = ["tabs": .tabs, "settings": .settings, "extensions": .extensions, "ublock": .ublock, "history": .history]
             if let x = r[q["r"] ?? ""] { Router.shared.push(x) } else { Router.shared.popToRoot(); store.presentedExtensionPage = nil }

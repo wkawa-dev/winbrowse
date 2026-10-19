@@ -81,7 +81,7 @@ struct AddressBar: View {
                         }
                         .buttonStyle(.tilt)
                         .accessibilityLabel("tabs")
-                        Button { withAnimation(.easeOut(duration: 0.2)) { router.menuOpen.toggle() } } label: {
+                        Button { router.toggleMenu() } label: {
                             Image(systemName: "ellipsis").font(.system(size: 18, weight: .bold)).foregroundStyle(theme.fg)
                                 .frame(width: 36, height: 40).contentShape(Rectangle())
                         }

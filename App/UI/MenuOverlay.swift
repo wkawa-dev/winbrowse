@@ -2,6 +2,9 @@ import SwiftUI
 import WebKit
 
 /// The "…" menu: the Windows Phone app bar expanded, round buttons on top, lowercase items below.
+///
+/// This is the panel only — the dimming scrim behind it lives in `RootView`, so the two can
+/// move on their own: the scrim fades, the panel peels open off the edge of the screen.
 struct MenuOverlay: View {
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var store: BrowserStore
@@ -9,57 +12,81 @@ struct MenuOverlay: View {
     @ObservedObject var tab: Tab
     @ObservedObject var pins = Pins.shared
     @Environment(\.horizontalSizeClass) private var hsc
+    @State private var shown = false
+
+    private var wide: Bool { hsc == .regular }
 
     var body: some View {
-        ZStack(alignment: hsc == .regular ? .topTrailing : .bottom) {
-            Color.black.opacity(0.45).ignoresSafeArea()
-                .onTapGesture { close() }
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 0) {
-                    Spacer(minLength: 0)
-                    HStack(alignment: .top, spacing: 18) {
-                        RoundIcon(system: "arrow.left", label: "back", showLabel: true) { close(); tab.webView?.goBack() }
-                            .opacity(tab.canGoBack ? 1 : 0.35)
-                        RoundIcon(system: "arrow.right", label: "forward", showLabel: true) { close(); tab.webView?.goForward() }
-                            .opacity(tab.canGoForward ? 1 : 0.35)
-                        RoundIcon(system: "square.and.arrow.up", label: "share", showLabel: true) { close(); share() }
-                        RoundIcon(system: pins.isPinned(tab.url) ? "pin.slash" : "pin", label: pins.isPinned(tab.url) ? "unpin" : "pin", showLabel: true) {
-                            if let u = tab.url { pins.toggle(u, title: tab.displayTitle) }
-                            close()
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.top, 14).padding(.bottom, 8)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        MetroMenuItem(title: "new tab") { close(); store.newTab(url: nil) }
-                        ForEach(ExtensionHost.shared.enabledExtensions) { e in
-                            if let p = e.popup ?? e.options {
-                                MetroMenuItem(title: e.name, detail: "extension") { close(); store.extPresent(ext: e, page: p) }
-                            }
-                        }
-                        MetroMenuItem(title: "uBlock Origin", detail: uboDetail) { close(); router.push(.ublock) }
-                        MetroMenuItem(title: "find on page") { close(); find() }
-                        MetroMenuItem(title: tab.desktop ? "mobile site" : "desktop site") {
-                            close()
-                            tab.desktop.toggle()
-                            tab.rebuildWebView(loading: tab.url)
-                        }
-                        MetroMenuItem(title: "extensions") { router.push(.extensions) }
-                        MetroMenuItem(title: "history") { router.push(.history) }
-                        MetroMenuItem(title: "settings") { router.push(.settings) }
-                    }
-                    .padding(.bottom, 10)
-                }
-                .frame(maxHeight: 460)
-                .fixedSize(horizontal: false, vertical: true)
+        panel
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: wide ? .topTrailing : .bottom)
+            .transition(.metroPeel(wide ? .top : .bottom))
+            .onAppear {
+                // The items follow the panel in, one after another, the way the phone's menu fills.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { withAnimation { shown = true } }
             }
-            .frame(maxWidth: hsc == .regular ? 380 : .infinity)
-            .background(theme.chrome.ignoresSafeArea(edges: .bottom))
-            .transition(.move(edge: hsc == .regular ? .top : .bottom).combined(with: .opacity))
+    }
+
+    private var panel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 0) {
+                Spacer(minLength: 0)
+                HStack(alignment: .top, spacing: 18) {
+                    RoundIcon(system: "arrow.left", label: "back", showLabel: true) { close(); tab.webView?.goBack() }
+                        .opacity(tab.canGoBack ? 1 : 0.35)
+                    RoundIcon(system: "arrow.right", label: "forward", showLabel: true) { close(); tab.webView?.goForward() }
+                        .opacity(tab.canGoForward ? 1 : 0.35)
+                    RoundIcon(system: "square.and.arrow.up", label: "share", showLabel: true) { close(); share() }
+                    RoundIcon(system: pins.isPinned(tab.url) ? "pin.slash" : "pin", label: pins.isPinned(tab.url) ? "unpin" : "pin", showLabel: true) {
+                        if let u = tab.url { pins.toggle(u, title: tab.displayTitle) }
+                        close()
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 14).padding(.bottom, 8)
+            .rise(shown, delay: 0.03)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.offset) { i, item in
+                        MetroMenuItem(title: item.title, detail: item.detail) { item.action() }
+                            .rise(shown, delay: 0.06 + Double(i) * 0.028)
+                    }
+                }
+                .padding(.bottom, 10)
+            }
+            .frame(maxHeight: wide ? 660 : 460)
+            .fixedSize(horizontal: false, vertical: true)
         }
+        // The items clear the home indicator; the panel itself still runs to the edge of the screen.
+        .safeAreaPadding(wide ? .top : .bottom)
+        .frame(maxWidth: wide ? 380 : .infinity)
+        .background(
+            Chamfer(corner: wide ? .bottomTrailing : .topTrailing, size: 30)
+                .fill(theme.chrome)
+                .ignoresSafeArea(edges: wide ? [] : .bottom)
+        )
+    }
+
+    private var items: [(title: String, detail: String?, action: () -> Void)] {
+        var out: [(String, String?, () -> Void)] = []
+        out.append(("new tab", nil, { close(); store.newTab(url: nil) }))
+        for e in ExtensionHost.shared.enabledExtensions {
+            if let p = e.popup ?? e.options {
+                out.append((e.name, "extension", { close(); store.extPresent(ext: e, page: p) }))
+            }
+        }
+        out.append(("uBlock Origin", uboDetail, { close(); router.push(.ublock) }))
+        out.append(("find on page", nil, { close(); find() }))
+        out.append((tab.desktop ? "mobile site" : "desktop site", nil, {
+            close()
+            tab.desktop.toggle()
+            tab.rebuildWebView(loading: tab.url)
+        }))
+        out.append(("extensions", nil, { close(); router.push(.extensions) }))
+        out.append(("history", nil, { close(); router.push(.history) }))
+        out.append(("settings", nil, { close(); router.push(.settings) }))
+        return out
     }
 
     private var uboDetail: String {
@@ -67,7 +94,7 @@ struct MenuOverlay: View {
         return ContentBlocker.shared.isSiteDisabled(host) ? "off for \(host)" : "on · \(ContentBlocker.shared.status)"
     }
 
-    private func close() { withAnimation(.easeOut(duration: 0.18)) { router.menuOpen = false } }
+    private func close() { router.closeMenu() }
 
     private func share() {
         guard let u = tab.url, let top = Dialogs.top else { return }

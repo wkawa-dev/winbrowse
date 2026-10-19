@@ -128,6 +128,96 @@ struct MetroMenuItem: View {
     }
 }
 
+/// Motion timings, Windows 10 Mobile style: quick off the mark, then decelerating.
+enum Metro {
+    /// The context menu peeling open off the edge of the screen.
+    static let menuOpen = Animation.timingCurve(0.12, 0.86, 0.2, 1, duration: 0.34)
+    /// ...and folding back down.
+    static let menuClose = Animation.timingCurve(0.45, 0, 0.75, 1, duration: 0.2)
+}
+
+/// The screen edge the Metro context menu hangs from.
+enum MenuHinge { case bottom, top }
+
+/// The Windows 10 Mobile context menu: a rectangle with one corner sliced off at 45°,
+/// the way the phone's app-bar menu peels away from the edge of the screen.
+struct Chamfer: Shape {
+    enum Corner { case topLeading, topTrailing, bottomLeading, bottomTrailing }
+    var corner: Corner = .topTrailing
+    var size: CGFloat = 28
+
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let c = min(size, min(r.width, r.height) / 2)
+        switch corner {
+        case .topLeading:
+            p.move(to: CGPoint(x: r.minX + c, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.minX, y: r.minY + c))
+        case .topTrailing:
+            p.move(to: CGPoint(x: r.minX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX - c, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.minY + c))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+        case .bottomLeading:
+            p.move(to: CGPoint(x: r.minX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.minX + c, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.minX, y: r.maxY - c))
+        case .bottomTrailing:
+            p.move(to: CGPoint(x: r.minX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - c))
+            p.addLine(to: CGPoint(x: r.maxX - c, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+        }
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// The Metro peel: the menu is hinged to one edge of the screen and swings open
+/// off it, tipping back in 3D as it comes, instead of popping into place.
+struct PeelModifier: ViewModifier {
+    /// 0 = closed, 1 = open.
+    let progress: Double
+    let hinge: MenuHinge
+
+    func body(content: Content) -> some View {
+        let p = min(1, max(0, progress))
+        let tilt = (hinge == .bottom ? -1.0 : 1.0) * 13 * (1 - p)
+        return content
+            .opacity(min(1, p * 2.8))
+            .scaleEffect(0.97 + 0.03 * p, anchor: hinge == .bottom ? .bottom : .top)
+            .offset(y: hinge == .bottom ? 46 * (1 - p) : -46 * (1 - p))
+            .rotation3DEffect(.degrees(tilt), axis: (x: 1, y: 0, z: 0),
+                              anchor: hinge == .bottom ? .bottom : .top, perspective: 0.42)
+    }
+}
+
+extension AnyTransition {
+    /// The Windows 10 Mobile context menu peeling open off its screen edge.
+    static func metroPeel(_ hinge: MenuHinge) -> AnyTransition {
+        .asymmetric(
+            insertion: .modifier(active: PeelModifier(progress: 0, hinge: hinge), identity: PeelModifier(progress: 1, hinge: hinge)),
+            removal: .modifier(active: PeelModifier(progress: 0, hinge: hinge), identity: PeelModifier(progress: 1, hinge: hinge)))
+    }
+}
+
+extension View {
+    /// The Metro reveal: an item rises into place once the menu has peeled open.
+    func rise(_ shown: Bool, delay: Double = 0) -> some View {
+        self
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 14)
+            .animation(.easeOut(duration: 0.28).delay(delay), value: shown)
+    }
+}
+
 /// Toast in the Windows Phone notification style (top banner).
 struct ToastView: View {
     @EnvironmentObject var theme: Theme

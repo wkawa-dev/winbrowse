@@ -16,10 +16,26 @@ final class Router: ObservableObject {
     @Published var forward = true
     @Published var menuOpen = false
 
+    /// The "…" menu: it peels open off the screen edge, never pops.
+    func toggleMenu() {
+        if menuOpen { closeMenu() } else { openMenu() }
+    }
+
+    func openMenu() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(Metro.menuOpen) { menuOpen = true }
+    }
+
+    func closeMenu() {
+        withAnimation(Metro.menuClose) { menuOpen = false }
+    }
+
     func push(_ r: Route) {
         forward = true
-        menuOpen = false
-        withAnimation(.easeOut(duration: 0.28)) { path.append(r) }
+        withAnimation(.easeOut(duration: 0.28)) {
+            menuOpen = false
+            path.append(r)
+        }
     }
 
     func pop() {

@@ -112,7 +112,12 @@ struct RootView: View {
         ZStack(alignment: .top) {
             BrowserView()
             if router.menuOpen, let t = store.active {
-                MenuOverlay(tab: t).zIndex(2)
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture { router.closeMenu() }
+                MenuOverlay(tab: t)
+                    .zIndex(2)
             }
             if let top = router.path.last {
                 page(top)

@@ -53,7 +53,7 @@ struct AddressBar: View {
     @ObservedObject var blocker = ContentBlocker.shared
     let wide: Bool
     @State private var text = ""
-    @FocusState private var focused: Bool
+    @State private var focused = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -96,9 +96,6 @@ struct AddressBar: View {
             if wide && focused { suggestions }
         }
         .background(theme.chrome)
-        .onChange(of: focused) { _, f in
-            if f { text = tab.url?.absoluteString ?? "" }
-        }
     }
 
     private var field: some View {
@@ -108,17 +105,18 @@ struct AddressBar: View {
                     .font(.system(size: 11)).foregroundStyle(focused ? Color.black : theme.subtle)
             }
             ZStack(alignment: .leading) {
-                TextField("", text: $text, prompt: Text("search or enter web address").foregroundStyle(focused ? Color.gray : theme.subtle))
-                    .font(.system(size: 16))
-                    .keyboardType(.webSearch)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.go)
-                    .focused($focused)
-                    .onSubmit { go(text) }
-                    .foregroundStyle(focused ? Color.black : theme.fg)
-                    .tint(theme.accent)
-                    .opacity(focused ? 1 : 0.011)
+                AddressField(
+                    text: $text,
+                    focused: $focused,
+                    url: tab.url?.absoluteString ?? "",
+                    placeholder: "search or enter web address",
+                    textColor: focused ? .black : UIColor(theme.fg),
+                    placeholderColor: focused ? .gray : UIColor(theme.subtle),
+                    tint: UIColor(theme.accent),
+                    chrome: UIColor(theme.chrome),
+                    onSubmit: go
+                )
+                .opacity(focused ? 1 : 0.011)
                 if !focused {
                     Text(displayText).font(.system(size: 16)).foregroundStyle(tab.url == nil ? theme.subtle : theme.fg).lineLimit(1)
                         .allowsHitTesting(false)
@@ -184,6 +182,99 @@ struct AddressBar: View {
     private func go(_ s: String) {
         focused = false
         store.open(s, in: tab)
+    }
+}
+
+/// UIKit text field behind the address bar. Focusing it selects the whole URL (so typing or paste replaces it),
+/// and a toolbar above the keyboard offers cut and paste.
+struct AddressField: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var focused: Bool
+    let url: String
+    let placeholder: String
+    let textColor: UIColor
+    let placeholderColor: UIColor
+    let tint: UIColor
+    let chrome: UIColor
+    let onSubmit: (String) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.font = .systemFont(ofSize: 16)
+        field.keyboardType = .webSearch
+        field.returnKeyType = .go
+        field.autocapitalizationType = .none
+        field.autocorrectionType = .no
+        field.spellCheckingType = .no
+        field.smartQuotesType = .no
+        field.smartDashesType = .no
+        field.delegate = context.coordinator
+        field.addTarget(context.coordinator, action: #selector(Coordinator.edited(_:)), for: .editingChanged)
+        field.inputAccessoryView = context.coordinator.toolbar
+        return field
+    }
+
+    func updateUIView(_ field: UITextField, context: Context) {
+        context.coordinator.parent = self
+        field.textColor = textColor
+        field.tintColor = tint
+        field.attributedPlaceholder = NSAttributedString(string: placeholder, attributes: [.foregroundColor: placeholderColor])
+        context.coordinator.toolbar.tintColor = tint
+        context.coordinator.toolbar.barTintColor = chrome
+        if field.text != text { field.text = text }
+        if focused && !field.isFirstResponder {
+            // Async: becoming first responder calls delegate methods that write the bindings, which must not happen mid-update.
+            DispatchQueue.main.async { field.becomeFirstResponder() }
+        } else if !focused && field.isFirstResponder {
+            field.resignFirstResponder()
+        }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextField, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? 0, height: proposal.height ?? 22)
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: AddressField
+        let toolbar: UIToolbar
+
+        init(_ parent: AddressField) {
+            self.parent = parent
+            let bar = UIToolbar(frame: CGRect(x: 0, y: 0, width: 0, height: 44))
+            bar.autoresizingMask = .flexibleWidth
+            bar.isTranslucent = false
+            bar.items = [
+                UIBarButtonItem(title: "cut", style: .plain, target: nil, action: #selector(UIResponderStandardEditActions.cut(_:))),
+                UIBarButtonItem(title: "paste", style: .plain, target: nil, action: #selector(UIResponderStandardEditActions.paste(_:))),
+                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            ]
+            toolbar = bar
+            super.init()
+        }
+
+        func textFieldDidBeginEditing(_ field: UITextField) {
+            let url = parent.url
+            field.text = url
+            parent.text = url
+            if !parent.focused { parent.focused = true }
+            // Async so the tap's own caret placement lands first; the selection then covers the whole URL.
+            DispatchQueue.main.async { field.selectAll(nil) }
+        }
+
+        func textFieldDidEndEditing(_ field: UITextField) {
+            if parent.focused { parent.focused = false }
+        }
+
+        func textFieldShouldReturn(_ field: UITextField) -> Bool {
+            parent.onSubmit(field.text ?? "")
+            return true
+        }
+
+        @objc func edited(_ field: UITextField) {
+            parent.text = field.text ?? ""
+        }
     }
 }
 

@@ -113,7 +113,6 @@ struct AddressBar: View {
                     textColor: focused ? .black : UIColor(theme.fg),
                     placeholderColor: focused ? .gray : UIColor(theme.subtle),
                     tint: UIColor(theme.accent),
-                    chrome: UIColor(theme.chrome),
                     onSubmit: go
                 )
                 .opacity(focused ? 1 : 0.011)
@@ -195,7 +194,6 @@ struct AddressField: UIViewRepresentable {
     let textColor: UIColor
     let placeholderColor: UIColor
     let tint: UIColor
-    let chrome: UIColor
     let onSubmit: (String) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -212,7 +210,8 @@ struct AddressField: UIViewRepresentable {
         field.smartDashesType = .no
         field.delegate = context.coordinator
         field.addTarget(context.coordinator, action: #selector(Coordinator.edited(_:)), for: .editingChanged)
-        field.inputAccessoryView = context.coordinator.toolbar
+        field.rightView = context.coordinator.actions(for: field)
+        field.rightViewMode = .whileEditing
         return field
     }
 
@@ -221,8 +220,7 @@ struct AddressField: UIViewRepresentable {
         field.textColor = textColor
         field.tintColor = tint
         field.attributedPlaceholder = NSAttributedString(string: placeholder, attributes: [.foregroundColor: placeholderColor])
-        context.coordinator.toolbar.tintColor = tint
-        context.coordinator.toolbar.barTintColor = chrome
+        context.coordinator.cut?.tintColor = tint
         if field.text != text { field.text = text }
         if focused && !field.isFirstResponder {
             // Async: becoming first responder calls delegate methods that write the bindings, which must not happen mid-update.
@@ -238,20 +236,37 @@ struct AddressField: UIViewRepresentable {
 
     final class Coordinator: NSObject, UITextFieldDelegate {
         var parent: AddressField
-        let toolbar: UIToolbar
+        private(set) var cut: UIButton?
 
         init(_ parent: AddressField) {
             self.parent = parent
-            let bar = UIToolbar(frame: CGRect(x: 0, y: 0, width: 0, height: 44))
-            bar.autoresizingMask = .flexibleWidth
-            bar.isTranslucent = false
-            bar.items = [
-                UIBarButtonItem(title: "cut", style: .plain, target: nil, action: #selector(UIResponderStandardEditActions.cut(_:))),
-                UIBarButtonItem(title: "paste", style: .plain, target: nil, action: #selector(UIResponderStandardEditActions.paste(_:))),
-                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            ]
-            toolbar = bar
             super.init()
+        }
+
+        /// Cut and paste buttons shown inside the field's trailing edge while editing.
+        /// Paste is a system UIPasteControl, so it pastes without the "Allow Paste" prompt.
+        func actions(for field: UITextField) -> UIView {
+            let side: CGFloat = 26
+            let cut = UIButton(type: .system, primaryAction: UIAction { [weak field] _ in field?.cut(nil) })
+            cut.setImage(UIImage(systemName: "scissors", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)), for: .normal)
+            cut.accessibilityLabel = "cut"
+            cut.frame = CGRect(x: 0, y: 0, width: side, height: side)
+
+            let config = UIPasteControl.Configuration()
+            config.displayMode = .iconOnly
+            config.cornerStyle = .fixed
+            config.cornerRadius = 0
+            config.baseForegroundColor = .white
+            config.baseBackgroundColor = parent.tint
+            let paste = UIPasteControl(configuration: config)
+            paste.target = field
+            paste.frame = CGRect(x: side + 6, y: 0, width: side, height: side)
+
+            let box = UIView(frame: CGRect(x: 0, y: 0, width: side * 2 + 6 + 4, height: side))
+            box.addSubview(cut)
+            box.addSubview(paste)
+            self.cut = cut
+            return box
         }
 
         func textFieldDidBeginEditing(_ field: UITextField) {

@@ -16,6 +16,14 @@ enum AppBoot {
     static func boot() {
         guard !booted else { return }
         booted = true
+        // After a reinstall, put the saved cookies back before any tab loads.
+        Task {
+            await Vault.restoreCookies()
+            start()
+        }
+    }
+
+    private static func start() {
         let host = ExtensionHost.shared
         host.load()
         host.tabs = BrowserStore.shared
@@ -58,6 +66,10 @@ struct WinBrowseApp: App {
     @StateObject private var store = BrowserStore.shared
     @StateObject private var toasts = Toasts.shared
 
+    init() {
+        Vault.restoreFilesIfFreshInstall()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -77,6 +89,7 @@ struct WinBrowseApp: App {
             case .background:
                 store.persistNow()
                 ExtensionHost.shared.storage.flush()
+                Vault.snapshot()
                 BackgroundMedia.shared.didEnterBackground()
             case .inactive:
                 BackgroundMedia.shared.willResignActive()

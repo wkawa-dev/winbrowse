@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0DE7B866827DA5434F86B590 /* ContentBlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8713958ADCE166CC736A125 /* ContentBlocker.swift */; };
+		1E2F174DB1AFCD46FE34DC71 /* Vault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CCB6DF68F9B44FF14E3B2F4 /* Vault.swift */; };
 		22A8FBEB0E74BA86DE89F088 /* WinBrowseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E5FE9D4D883E04795F86B6 /* WinBrowseApp.swift */; };
 		259F44E959656A7111B949F4 /* Pivot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A3A423FAF518A7CDBA9502 /* Pivot.swift */; };
 		2FCC6AF5E1AEFEF3C1DF6553 /* WebContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E16DF9B7B24287051C395B /* WebContainer.swift */; };
@@ -47,6 +48,7 @@
 		60490026B0EEF006A00C0FDB /* WinBrowse.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = WinBrowse.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7302DD320A907FE38D3DDF7A /* winext-shim.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "winext-shim.js"; sourceTree = "<group>"; };
 		7AA641C62025F0690214B328 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		7CCB6DF68F9B44FF14E3B2F4 /* Vault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vault.swift; sourceTree = "<group>"; };
 		829E9B25CA9274DCD5A713DD /* WebExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebExtension.swift; sourceTree = "<group>"; };
 		87A3A423FAF518A7CDBA9502 /* Pivot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pivot.swift; sourceTree = "<group>"; };
 		8D2F8F10159275D64F7C45F2 /* Extensions-bundle */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "Extensions-bundle"; path = "App/Extensions-bundle"; sourceTree = SOURCE_ROOT; };
@@ -143,6 +145,7 @@
 				DB4AE1B56A5B0000F24E24DA /* BrowserStore.swift */,
 				D0AB651756FF514DD48E2893 /* DebugServer.swift */,
 				EEBDF622B052D847B49C93E7 /* Tab.swift */,
+				7CCB6DF68F9B44FF14E3B2F4 /* Vault.swift */,
 				D793E5A601C5D16E1F05D451 /* WebViewFactory.swift */,
 			);
 			path = Browser;
@@ -263,6 +266,7 @@
 				F91DDD90A2E110446CDC6C62 /* Tab.swift in Sources */,
 				FA03A28D88392A1E7D63C442 /* Theme.swift in Sources */,
 				5C85365BBECCB93B50A007C7 /* UBOScripts.swift in Sources */,
+				1E2F174DB1AFCD46FE34DC71 /* Vault.swift in Sources */,
 				2FCC6AF5E1AEFEF3C1DF6553 /* WebContainer.swift in Sources */,
 				F1AFBEC5E5F787C957E5CC23 /* WebExtension.swift in Sources */,
 				50639F974E7F5212F2862139 /* WebViewFactory.swift in Sources */,

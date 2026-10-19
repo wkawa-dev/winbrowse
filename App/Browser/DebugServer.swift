@@ -84,6 +84,15 @@ final class DebugServer {
                 let r = try await w.callAsyncJavaScript(body, arguments: [:], in: nil, contentWorld: cw)
                 return r.map { jsonString(jsonSafe($0)) } ?? "undefined"
             } catch { return "error: \(error)" }
+        case "/focus":
+            NotificationCenter.default.post(name: .init("debug.focusAddress"), object: nil); return "ok"
+        case "/field":
+            // Reads the address field; `press=address.cut|address.paste` taps that button first, `type=` inserts text.
+            guard let f = DebugUI.findAddressField() else { return "no field" }
+            if let id = q["press"], let b = DebugUI.find(UIButton.self, id: id, in: f.rightView) { b.sendActions(for: .primaryActionTriggered) }
+            if let t = q["type"] { f.insertText(t) }
+            let sel = f.selectedTextRange.flatMap { f.text(in: $0) } ?? ""
+            return jsonString(["text": f.text ?? "", "selected": sel, "editing": f.isFirstResponder, "rightView": f.rightView.map { "\($0.frame)" } ?? "none"])
         case "/menu":
             Router.shared.menuOpen.toggle(); return "ok"
         case "/route":
@@ -116,6 +125,23 @@ extension ExtensionHost {
             let r = try await w.callAsyncJavaScript(code, arguments: [:], in: nil, contentWorld: .page)
             return r.map { jsonString(jsonSafe($0)) } ?? "undefined"
         } catch { return "error: \(error)" }
+    }
+}
+
+@MainActor
+enum DebugUI {
+    static func findAddressField() -> UITextField? {
+        for sc in UIApplication.shared.connectedScenes {
+            for w in (sc as? UIWindowScene)?.windows ?? [] { if let f = find(UITextField.self, id: nil, in: w) { return f } }
+        }
+        return nil
+    }
+
+    static func find<T: UIView>(_ type: T.Type, id: String?, in v: UIView?) -> T? {
+        guard let v else { return nil }
+        if let t = v as? T, id == nil || t.accessibilityIdentifier == id { return t }
+        for s in v.subviews { if let r = find(type, id: id, in: s) { return r } }
+        return nil
     }
 }
 #endif

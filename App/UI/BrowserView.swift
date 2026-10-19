@@ -136,6 +136,7 @@ struct AddressBar: View {
         .overlay(Rectangle().strokeBorder(focused ? theme.accent : Color.clear, lineWidth: 2))
         .contentShape(Rectangle())
         .onTapGesture { focused = true }
+        .debugFocus($focused)
     }
 
     private var displayText: String {
@@ -243,30 +244,40 @@ struct AddressField: UIViewRepresentable {
             super.init()
         }
 
-        /// Cut and paste buttons shown inside the field's trailing edge while editing.
-        /// Paste is a system UIPasteControl, so it pastes without the "Allow Paste" prompt.
+        /// Cut and paste buttons at the trailing edge of the field while editing.
         func actions(for field: UITextField) -> UIView {
-            let side: CGFloat = 26
-            let cut = UIButton(type: .system, primaryAction: UIAction { [weak field] _ in field?.cut(nil) })
-            cut.setImage(UIImage(systemName: "scissors", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)), for: .normal)
-            cut.accessibilityLabel = "cut"
-            cut.frame = CGRect(x: 0, y: 0, width: side, height: side)
-
+            func button(_ symbol: String, _ label: String, _ id: String, _ action: @escaping () -> Void) -> UIButton {
+                let b = UIButton(type: .system, primaryAction: UIAction { _ in action() })
+                b.setImage(UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)), for: .normal)
+                b.accessibilityLabel = label
+                b.accessibilityIdentifier = id
+                b.widthAnchor.constraint(equalToConstant: 36).isActive = true
+                b.heightAnchor.constraint(equalToConstant: 36).isActive = true
+                return b
+            }
+            let cut = button("scissors", "cut", "address.cut") { [weak self, weak field] in
+                guard let self, let field, let r = field.selectedTextRange, !r.isEmpty, let t = field.text(in: r) else { return }
+                UIPasteboard.general.string = t
+                field.replace(r, withText: "")
+                self.edited(field)
+            }
+            // UIPasteControl pastes without iOS's "Allow Paste" prompt, which reading UIPasteboard directly would trigger.
             let config = UIPasteControl.Configuration()
             config.displayMode = .iconOnly
             config.cornerStyle = .fixed
             config.cornerRadius = 0
-            config.baseForegroundColor = .white
-            config.baseBackgroundColor = parent.tint
+            config.baseBackgroundColor = .white
+            config.baseForegroundColor = parent.tint
             let paste = UIPasteControl(configuration: config)
             paste.target = field
-            paste.frame = CGRect(x: side + 6, y: 0, width: side, height: side)
-
-            let box = UIView(frame: CGRect(x: 0, y: 0, width: side * 2 + 6 + 4, height: side))
-            box.addSubview(cut)
-            box.addSubview(paste)
+            paste.accessibilityIdentifier = "address.paste"
+            paste.widthAnchor.constraint(equalToConstant: 36).isActive = true
+            paste.heightAnchor.constraint(equalToConstant: 36).isActive = true
             self.cut = cut
-            return box
+            let stack = UIStackView(arrangedSubviews: [cut, paste])
+            stack.spacing = 0
+            stack.frame = CGRect(x: 0, y: 0, width: 72, height: 36)
+            return stack
         }
 
         func textFieldDidBeginEditing(_ field: UITextField) {
@@ -396,3 +407,14 @@ private struct TabChip: View {
         .onTapGesture { store.select(tab) }
     }
 }
+
+#if DEBUG
+extension View {
+    /// Lets the debug server focus the address bar (`/focus`).
+    func debugFocus(_ focused: Binding<Bool>) -> some View {
+        onReceive(NotificationCenter.default.publisher(for: .init("debug.focusAddress"))) { _ in focused.wrappedValue = true }
+    }
+}
+#else
+extension View { func debugFocus(_ focused: Binding<Bool>) -> some View { self } }
+#endif

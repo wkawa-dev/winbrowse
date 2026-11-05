@@ -85,10 +85,10 @@ WinBrowse provides an isolated, standards-aligned extension environment bridging
    https://example.workers.dev/source.json
    ```
 3. WinBrowse will appear in your app list ready to install and receive one-tap updates.
-4. Alternatively, download the latest unsigned `.ipa` from the [Releases](https://github.com/winbrowse/winbrowse/releases) page and sideload it.
+4. Alternatively, download an unsigned `.ipa` from a CI run's artifacts on the ci-server instance (see [CI](#ci)) and sideload it.
 
 ### TrollStore (iOS 15.0 – 17.0)
-Download the unsigned IPA from [Releases](https://github.com/winbrowse/winbrowse/releases) and open it directly with TrollStore for permanent, revokeless installation.
+Download the unsigned IPA from a CI run's artifacts (see [CI](#ci)) and open it directly with TrollStore for permanent, revokeless installation.
 
 ---
 
@@ -103,7 +103,7 @@ Download the unsigned IPA from [Releases](https://github.com/winbrowse/winbrowse
 ### Quick Start
 ```bash
 # Clone the repository
-git clone https://github.com/winbrowse/winbrowse.git
+git clone https://ci.example/ci-user/winbrowse.git
 cd winbrowse
 
 # Generate Xcode project from project.yml
@@ -125,6 +125,11 @@ To compile a release build and package an unsigned `.ipa` into `dist/`:
 ```bash
 scripts/build-ipa.sh
 ```
+
+### CI
+
+Builds run on the build Mac's ci-server instance over private network. Push to `main` for an unsigned IPA artifact; push a
+`v*` tag to also publish it to the SideStore source. Details in **[docs/ci.md](docs/ci.md)**.
 
 ### Updating Extension Rules & Bundles
 To fetch the latest Chrome Web Store CRX packages and compiled uBlock Origin Lite rulesets:
@@ -216,10 +221,13 @@ winbrowse/
 │   └── WinBrowseApp.swift       # App lifecycle entry point
 ├── assets/
 │   └── screenshots/             # High-resolution screenshots for documentation
+├── .forgejo/workflows/ios.yml   # CI: unsigned IPA build, tag-triggered publish
 ├── deploy/                      # Cloudflare Workers SideStore source & asset deploy
+├── docs/ci.md                   # CI/release documentation
 ├── scripts/
 │   ├── build-ipa.sh             # Packages unsigned release IPA
-│   ├── publish.sh               # Builds IPA and deploys SideStore source
+│   ├── patch-xadblock.py        # Re-applies our fixes to the vendored X ad blocker
+│   ├── publish.sh               # Builds IPA (or takes one via IPA=) and deploys SideStore source
 │   ├── sim.sh                   # Simulator build and launch runner
 │   └── update-extensions.sh     # Upstream extension updater
 ├── project.yml                  # XcodeGen declarative project spec

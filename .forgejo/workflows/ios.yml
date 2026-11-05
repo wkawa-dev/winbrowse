@@ -1,0 +1,91 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish this build to Cloudflare (SideStore source)
+        type: boolean
+        default: false
+
+concurrency:
+  group: ios-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  VERSION_MAJOR_MINOR: "1.0"
+  # The last build published to SideStore was 1.0.0, so CI continues from 1.0.1.
+  VERSION_PATCH_OFFSET: "0"
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: ios
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Toolchain
+        run: |
+          sw_vers -productVersion
+          xcodebuild -version
+          xcodegen --version
+
+      - name: Version
+        id: version
+        run: |
+          if [ "${GITHUB_REF#refs/tags/}" != "$GITHUB_REF" ]; then
+            V="${GITHUB_REF#refs/tags/}"
+            V="${V#v}"
+          else
+            V="${VERSION_MAJOR_MINOR}.$(( VERSION_PATCH_OFFSET + GITHUB_RUN_NUMBER ))"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Building WinBrowse $V (build $GITHUB_RUN_NUMBER)"
+
+      - name: Build IPA
+        env:
+          WINBROWSE_VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          rm -rf dist
+          xcodegen generate
+          IPA=$(scripts/build-ipa.sh)
+          echo "path=$IPA" >> "$GITHUB_OUTPUT"
+          ls -lh "$IPA"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+            "build/release/Build/Products/Release-iphoneos/WinBrowse.app/Info.plist"
+
+      # v4 refuses to run against ci-server (it reports itself as GHES); v3 is the supported line.
+      - uses: actions/upload-artifact@v3
+        with:
+          name: winbrowse-ipa
+          path: dist/*.ipa
+          retention-days: 30
+
+  publish:
+    name: Publish to Cloudflare
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: winbrowse-ipa
+          path: dist
+
+      - name: Publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN secret is not set"; exit 1; }
+          IPA=$(ls dist/*.ipa | head -1)
+          echo "Publishing $IPA"
+          IPA="$IPA" scripts/publish.sh

@@ -8,8 +8,11 @@ cd "$(dirname "$0")/.."
 : "${SITE_URL:=https://example.workers.dev}"
 export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-00000000000000000000000000000000}"
 SITE_URL="${SITE_URL%/}"
-[ "${SKIP_EXT_UPDATE:-}" ] || scripts/update-extensions.sh   # newest SponsorBlock / X-Posed / uBO filter lists in every build
-IPA=$(scripts/build-ipa.sh | tail -1)
+# CI builds the IPA in an earlier job and passes it in (IPA=...); locally we refresh extensions and build it here.
+if [ -z "${IPA:-}" ]; then
+  [ "${SKIP_EXT_UPDATE:-}" ] || scripts/update-extensions.sh   # newest SponsorBlock / X-Posed / uBO filter lists in every build
+  IPA=$(scripts/build-ipa.sh | tail -1)
+fi
 NAME=$(basename "$IPA" .ipa)
 VERSION=$(echo "$NAME" | sed -E 's/^winbrowse-(.*)-[0-9]+$/\1/')
 BUILD=${NAME##*-}

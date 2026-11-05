@@ -18,6 +18,7 @@ crx() { # name id
 crx sponsorblock mnjggcdmjocbbbhaepdhchncahnbgone
 crx xposed oodhljjldjdhcdopjpmfgbaoibpancfk
 crx xadblock eeiplahcoljpdmmdofhdhinjkeammchg
+python3 scripts/patch-xadblock.py   # keep focal tweets visible on /status pages
 
 # uBlock Origin: its own WebKit-targeted build (uBO Lite for Safari) — compiled filter lists + scriptlets.
 TAG=$(gh release view -R uBlockOrigin/uBOL-home --json tagName -q .tagName)

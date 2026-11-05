@@ -44,9 +44,10 @@ version is pushed, SideStore will not offer it as an update.
 git tag v1.0.1 && git push origin v1.0.1
 ```
 
-Needs the repo Actions secret `CLOUDFLARE_API_TOKEN` (Settings → Actions → Secrets). The same token as WinMusic's
-works (Workers Scripts Write); the Worker here is `winbrowse` on account `00000000000000000000000000000000`.
-Without it `build` still passes and only `publish` fails, with an explicit message.
+Needs the repo Actions secret `CLOUDFLARE_API_TOKEN` (Settings → Actions → Secrets). It holds the user-owned
+Cloudflare token `ci-api-token`, scoped to Workers Scripts Read + Write on the example-account account
+`00000000000000000000000000000000`; the Worker here is `winbrowse`. Without it `build` still passes and only
+`publish` fails, with an explicit message. `v1.0.1` was the first release published this way.
 
 Local fallback on the Air: `scripts/publish.sh` (refreshes extensions, builds, deploys).
 

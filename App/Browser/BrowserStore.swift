@@ -74,6 +74,13 @@ final class BrowserStore: ObservableObject {
         for t in live.dropFirst(limit) where !(t.webView.map(BackgroundMedia.shared.isPlaying) ?? false) { t.discard() }
     }
 
+    /// Drop every live web view (except ones playing media) so it is rebuilt with the current configuration,
+    /// keeping history and scroll state. Used when a setting that only applies at web view creation changes.
+    func recycleWebViews() {
+        for t in tabs where t.hasWebView && !(t.webView.map(BackgroundMedia.shared.isPlaying) ?? false) { t.discard() }
+        objectWillChange.send()
+    }
+
     /// Only a real memory warning from iOS sheds tabs, and then just the least recently used half.
     func observeMemoryWarnings() {
         guard memoryObserver == nil else { return }

@@ -11,6 +11,13 @@ final class WebViewFactory {
     let unfiltered = WKUserContentController()
     private var installedLists: [WKContentRuleList] = []
 
+    /// Whether pages may start video/audio on their own. Off means playback needs a tap (what lets music from
+    /// another app carry on while scrolling feeds full of autoplaying clips). Applies to web views made after it changes.
+    var autoplayEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "media.autoplay") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "media.autoplay") }
+    }
+
     static let safariSuffix = "Version/17.0 Mobile/15E148 Safari/604.1"
     static let desktopUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
 
@@ -49,7 +56,7 @@ final class WebViewFactory {
         c.allowsInlineMediaPlayback = true
         c.allowsPictureInPictureMediaPlayback = true
         c.allowsAirPlayForMediaPlayback = true
-        c.mediaTypesRequiringUserActionForPlayback = []
+        c.mediaTypesRequiringUserActionForPlayback = autoplayEnabled ? [] : .all
         c.applicationNameForUserAgent = Self.safariSuffix
         c.defaultWebpagePreferences.allowsContentJavaScript = true
         c.defaultWebpagePreferences.preferredContentMode = desktop ? .desktop : .recommended

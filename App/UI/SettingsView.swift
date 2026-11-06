@@ -6,6 +6,7 @@ struct SettingsView: View {
     @EnvironmentObject var store: BrowserStore
     @State private var engine = SearchEngine.current
     @State private var bgAudio = BackgroundMedia.shared.enabled
+    @State private var autoplay = WebViewFactory.shared.autoplayEnabled
     @State private var cleared: String?
 
     var body: some View {
@@ -31,6 +32,11 @@ struct SettingsView: View {
                             .onChange(of: bgAudio) { _, v in
                                 BackgroundMedia.shared.enabled = v
                                 WebViewFactory.shared.rebuildScripts()
+                            }
+                        MetroToggle(title: "autoplay video", detail: "let pages start videos on their own. turn off to keep music from other apps playing while you scroll; tap a video to play it", isOn: $autoplay)
+                            .onChange(of: autoplay) { _, v in
+                                WebViewFactory.shared.autoplayEnabled = v
+                                store.recycleWebViews()
                             }
                     }
 

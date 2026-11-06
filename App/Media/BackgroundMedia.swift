@@ -68,9 +68,12 @@ final class BackgroundMedia: NSObject {
 
     func isPlaying(_ w: WKWebView) -> Bool { playing[ObjectIdentifier(w)]?.webView != nil }
 
-    func configureSession() {
+    /// Sets the playback category. Only activates the session when `activate` is true: activating a non-mixing
+    /// session pauses music from other apps, so that is left to WebKit (when media actually plays) or to a page that
+    /// is already playing when the app is backgrounded.
+    func configureSession(activate: Bool = false) {
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback, policy: .longFormVideo)
-        try? AVAudioSession.sharedInstance().setActive(true)
+        if activate { try? AVAudioSession.sharedInstance().setActive(true) }
     }
 
     func install(into ucc: WKUserContentController) {
@@ -92,7 +95,7 @@ final class BackgroundMedia: NSObject {
         guard enabled else { return }
         inBackground = true
         backgroundedAt = Date()
-        configureSession()
+        configureSession(activate: playing.values.contains { $0.webView != nil })
         // WebKit pauses video elements as the app leaves the foreground; start them again.
         for delay in [0.3, 1.0, 2.5] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.resumeAll() }

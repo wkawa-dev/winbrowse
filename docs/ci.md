@@ -12,9 +12,8 @@ and troubleshooting. There is no GitHub CI.
 | Workflow | `.forgejo/workflows/ios.yml` |
 | Runner label | `ios` (host mode, Xcode 27.2 + xcodegen on the Mac runner) |
 
-The ci-server host is stable. The Mac runner is being relocated to the Air; the
-Air currently has only Command Line Tools, so install Xcode before registering
-the runner there.
+The ci-server host is stable. The Mac runner is the build Mac (`build-mac`), which
+also handles manual builds over SSH.
 
 ## Pipeline
 
@@ -51,7 +50,7 @@ Cloudflare token `ci-api-token`, scoped to Workers Scripts Read + Write on the e
 `00000000000000000000000000000000`; the Worker here is `winbrowse`. Without it `build` still passes and only
 `publish` fails, with an explicit message. `v1.0.1` was the first release published this way.
 
-Local fallback on the Air: `scripts/publish.sh` (refreshes extensions, builds, deploys).
+Local fallback (run on the Studio): `scripts/publish.sh` (refreshes extensions, builds, deploys).
 
 ## Repository access
 

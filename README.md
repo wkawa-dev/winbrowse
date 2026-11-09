@@ -18,7 +18,7 @@
 
 ## Overview
 
-**WinBrowse** brings back the beloved Metro / Modern UI of Windows 10 Mobile and Windows Phone (Edge + Groove) to modern iOS and iPadOS devices. Behind the fluid typography, tilt animations, and Live Tile start screen is a custom **Chrome WebExtension runtime** executing on Apple's WebKit engine alongside native content blocking with over **117,000+ active filter rules**.
+**WinBrowse** brings back the beloved Metro / Modern UI of Windows 10 Mobile and Windows Phone (Edge + Groove) to modern iOS and iPadOS devices. Behind the fluid typography and tilt animations is a custom **Chrome WebExtension runtime** executing on Apple's WebKit engine alongside native content blocking with over **114,000 active filter rules**.
 
 Unlike browsers that require JIT or modified WebKit frameworks, WinBrowse runs cleanly within standard iOS capabilities—making it fully installable via **SideStore**, **AltStore**, **TrollStore**, or Xcode.
 
@@ -28,17 +28,17 @@ Unlike browsers that require JIT or modified WebKit frameworks, WinBrowse runs c
 
 <div align="center">
 
-| Start Screen (Live Tiles) | Web Browsing & Metro App Bar | Metro Menu Overlay |
+| Web Browsing & Metro App Bar | Metro Menu Overlay | Tab Switcher Cards |
 | :---: | :---: | :---: |
-| <img src="assets/screenshots/01-start-page.png" width="250" alt="WinBrowse Live Tile Start Screen" /> | <img src="assets/screenshots/02-browser-webpage.png" width="250" alt="Web Browsing with Metro controls" /> | <img src="assets/screenshots/03-metro-menu.png" width="250" alt="Windows Phone Menu Overlay" /> |
+| <img src="assets/screenshots/02-browser-webpage.png" width="250" alt="Web Browsing with Metro controls" /> | <img src="assets/screenshots/03-metro-menu.png" width="250" alt="Windows Phone Menu Overlay" /> | <img src="assets/screenshots/04-tab-switcher.png" width="250" alt="Metro Tab Switcher Cards" /> |
 
-| Tab Switcher Cards | uBlock Origin Lite Panel | Extension Manager |
+| uBlock Origin Lite Panel | Extension Manager | SponsorBlock MV3 Popup |
 | :---: | :---: | :---: |
-| <img src="assets/screenshots/04-tab-switcher.png" width="250" alt="Metro Tab Switcher Cards" /> | <img src="assets/screenshots/05-ublock-origin.png" width="250" alt="uBlock Origin Lite Filter Lists" /> | <img src="assets/screenshots/06-extensions-manager.png" width="250" alt="Extensions Manager" /> |
+| <img src="assets/screenshots/05-ublock-origin.png" width="250" alt="uBlock Origin Lite Filter Lists" /> | <img src="assets/screenshots/06-extensions-manager.png" width="250" alt="Extensions Manager" /> | <img src="assets/screenshots/07-sponsorblock-popup.png" width="250" alt="SponsorBlock Extension Popup" /> |
 
-| SponsorBlock MV3 Popup | Settings & Metro Accent Colors |
-| :---: | :---: |
-| <img src="assets/screenshots/07-sponsorblock-popup.png" width="250" alt="SponsorBlock Extension Popup" /> | <img src="assets/screenshots/08-settings.png" width="250" alt="Settings & Metro Accent Colors" /> |
+| Settings & Metro Accent Colors |
+| :---: |
+| <img src="assets/screenshots/08-settings.png" width="250" alt="Settings & Metro Accent Colors" /> |
 
 </div>
 
@@ -49,11 +49,11 @@ Unlike browsers that require JIT or modified WebKit frameworks, WinBrowse runs c
 | Feature / Extension | Implementation Details |
 | :--- | :--- |
 | **SponsorBlock 6.x** | The **real Chrome Web Store extension build** (MV3) running on WinBrowse's `chrome.*` shim. Content scripts inject into YouTube, the background worker tracks segments, and the popup/options sheets provide interactive segment management. Automatically skips sponsors, intros, outros, self-promos, previews, and interaction reminders. |
-| **uBlock Origin Lite** | Official uBO WebKit engine (uBO Lite for Safari). Its compiled filter lists become WebKit content-rule lists (**~118,000 network rules active** by default). Injects cosmetic element-hiding filters, procedural filters, and scriptlets for YouTube and streaming ad circumvention. Includes per-site toggle and filter list customization (EasyList, EasyPrivacy, AdGuard Mobile, Annoyances, Block LAN). |
+| **uBlock Origin Lite** | Official uBO WebKit engine (uBO Lite for Safari). Its compiled filter lists become WebKit content-rule lists (**~114,000 network rules active** by default). Injects cosmetic element-hiding filters, procedural filters, and scriptlets for YouTube and streaming ad circumvention. Includes per-site toggle and filter list customization (EasyList, EasyPrivacy, AdGuard Mobile, Annoyances, Block LAN). |
 | **X-Posed 4.x** | The authentic X-Posed extension: displays geolocation country flags, account creation dates, and client information next to X (Twitter) handles. Background scripts communicate through a native cookie-forwarding fetch proxy. |
 | **The Ad Blocker for X** | Strips promoted ads, "Who to follow" recommendations, and sponsored threads directly from X's timeline via combined DOM observer and timeline JSON response interception. |
 | **Background Playback** | Keeps YouTube and web media playing when backgrounded or locked. Injects `document.visibilityState === "visible"` spoofing, configures `AVAudioSession` to `.playback`, automatically resumes paused WebKit playback, and integrates with Control Center / lock screen media controls. |
-| **Windows Phone Metro UI** | Live Tile start screen with custom site pins and recent history, panoramic pivots, 3D tilt press animations, collapsible bottom app bar, and customizable Windows accent color palette (Cobalt, Crimson, Emerald, Amber, Violet, Cyan, Magenta, Lime, Orange, Steel). |
+| **Windows Phone Metro UI** | Clean, blank new-tab page, panoramic pivots, 3D tilt press animations, collapsible bottom app bar, and customizable Windows accent color palette (Cobalt, Crimson, Emerald, Amber, Violet, Cyan, Magenta, Lime, Orange, Steel). |
 | **Local Debug Control Port** | Embedded HTTP debug server listening on `localhost:8899` allowing CLI automation, remote URL opening, tab state querying, and JavaScript execution into page or extension worlds. |
 
 ---
@@ -216,7 +216,7 @@ winbrowse/
 │   │   ├── ExtensionViews.swift # Extension popups and settings views
 │   │   ├── MenuOverlay.swift    # Metro bottom menu overlay
 │   │   ├── SettingsView.swift   # Settings and theme customization
-│   │   ├── StartPage.swift      # Windows Phone live tile start page
+│   │   ├── StartPage.swift      # New-tab page (intentionally blank)
 │   │   └── Metro/               # Metro design system controls, pivots, and fonts
 │   └── WinBrowseApp.swift       # App lifecycle entry point
 ├── assets/

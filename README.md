@@ -128,7 +128,7 @@ scripts/build-ipa.sh
 
 ### CI
 
-Builds run on the build Mac's ci-server instance over private network. Push to `main` for an unsigned IPA artifact; push a
+Builds run on the ci-server instance on the CI server over private network; the iOS job runs on a host-mode Mac runner. Push to `main` for an unsigned IPA artifact; push a
 `v*` tag to also publish it to the SideStore source. Details in **[docs/ci.md](docs/ci.md)**.
 
 ### Updating Extension Rules & Bundles

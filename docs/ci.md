@@ -1,18 +1,20 @@
-# CI: building WinBrowse on the build Mac
+# CI: building WinBrowse with ci-server on the CI server
 
-WinBrowse builds on the self-hosted ci-server instance on the build Mac, reached over private network. It uses the
-same instance, runner and pipeline shape as WinMusic (see that repo's `docs/ci.md` for the host layout, runner
-setup, private network quirks and troubleshooting table). There is no GitHub CI.
+WinBrowse builds on the self-hosted ci-server instance on the CI server, reached over
+private network. The iOS job runs on a host-mode Mac `ci-server-runner`
+(Xcode 27.2 + xcodegen 2.46); see WinMusic's `docs/ci.md` for the runner setup
+and troubleshooting. There is no GitHub CI.
 
 | | |
 |---|---|
-| ci-server | http://build-mac-1.example-tailnet.example.net:3300 |
+| ci-server | https://ci.example |
 | Repository | `ci-user/winbrowse` — `https://ci.example/ci-user/winbrowse.git` |
 | Workflow | `.forgejo/workflows/ios.yml` |
-| Runner label | `ios` (host mode, Xcode 27.2 + xcodegen on the Studio) |
+| Runner label | `ios` (host mode, Xcode 27.2 + xcodegen on the Mac runner) |
 
-> The Studio has two private network nodes. `build-mac-1` is the live one; `build-mac` is a stale,
-> offline node. Always use the `-1` name.
+The ci-server host is stable. The Mac runner is being relocated to the Air; the
+Air currently has only Command Line Tools, so install Xcode before registering
+the runner there.
 
 ## Pipeline
 
@@ -53,5 +55,6 @@ Local fallback on the Air: `scripts/publish.sh` (refreshes extensions, builds, d
 
 ## Repository access
 
-SSH goes through the `ci-server` alias in `~/ssh-keys/config` (port 2222, key `~/ssh-keys/build_key`).
-Registration is disabled and the repo is private; the web UI needs the `ci-user` login.
+SSH goes through the `ci-server` alias in `~/ssh-keys/config` (CI server, port 2222, key
+`~/ssh-keys/ci_key`). Registration is disabled and the repo is private;
+the web UI needs the `ci-user` login.

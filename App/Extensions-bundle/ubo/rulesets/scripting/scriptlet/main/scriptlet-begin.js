@@ -640,7 +640,12 @@ class JSONPath {
             if ( rval instanceof Object === false ) { return; }
             const lval = obj[key];
             if ( lval instanceof Object === false ) { return; }
-            if ( Array.isArray(lval) ) { return; }
+            if ( Array.isArray(lval) ) {
+                if ( Array.isArray(rval) ) {
+                    lval.push(...rval); break;
+                }
+                lval.push(rval); break;
+            }
             for ( const [ k, v ] of JSONPath.entries(rval) ) {
                 lval[k] = v;
             }
@@ -1487,6 +1492,172 @@ function jsonEditXhrResponseFn(trusted, jsonq = '', ...varargs) {
     };
 }
 
+function jsonlEditFetchResponse(jsonq = '', ...args) {
+    jsonlEditFetchResponseFn(false, jsonq, ...args);
+}
+
+function jsonlEditFetchResponseFn(trusted, jsonq = '', ...varargs) {
+    const safe = safeSelf();
+    const logPrefix = safe.makeLogPrefix(
+        `${trusted ? 'trusted-' : ''}jsonl-edit-fetch-response`,
+        jsonq
+    );
+    const jsonp = JSONPath.create(jsonq);
+    if ( jsonp.valid === false || jsonp.value !== undefined && trusted !== true ) {
+        return safe.uboLog(logPrefix, 'Bad JSONPath query');
+    }
+    const extraArgs = safe.parseVarargs(varargs);
+    const propNeedles = parsePropertiesToMatchFn(extraArgs.propsToMatch, 'url');
+    const jsonExtract = extraArgs.jsonExtract
+        ? new RegExp(extraArgs.jsonExtract)
+        : /^(.*)$/;
+    const logall = jsonq === '';
+    proxyApplyFn('fetch', function(context) {
+        const args = context.callArgs;
+        const fetchPromise = context.reflect();
+        if ( propNeedles.size !== 0 ) {
+            const props = collateFetchArgumentsFn(...args);
+            const matched = matchObjectPropertiesFn(propNeedles, props);
+            if ( matched === undefined ) { return fetchPromise; }
+            if ( safe.logLevel > 1 ) {
+                safe.uboLog(logPrefix, `Matched "propsToMatch":\n\t${matched.join('\n\t')}`);
+            }
+        }
+        return fetchPromise.then(responseBefore => {
+            const response = responseBefore.clone();
+            return response.text().then(textBefore => {
+                if ( typeof textBefore !== 'string' ) { return textBefore; }
+                if ( logall ) {
+                    safe.uboLog(logPrefix, textBefore);
+                    return responseBefore;
+                }
+                const textAfter = jsonlEditFn(jsonp, textBefore, jsonExtract);
+                if ( textAfter === textBefore ) { return responseBefore; }
+                safe.uboLog(logPrefix, 'Pruned');
+                const responseAfter = new Response(textAfter, {
+                    status: responseBefore.status,
+                    statusText: responseBefore.statusText,
+                    headers: responseBefore.headers,
+                });
+                Object.defineProperties(responseAfter, {
+                    ok: { value: responseBefore.ok },
+                    redirected: { value: responseBefore.redirected },
+                    type: { value: responseBefore.type },
+                    url: { value: responseBefore.url },
+                });
+                return responseAfter;
+            }).catch(reason => {
+                safe.uboErr(logPrefix, 'Error:', reason);
+                return responseBefore;
+            });
+        }).catch(reason => {
+            safe.uboErr(logPrefix, 'Error:', reason);
+            return fetchPromise;
+        });
+    });
+}
+
+function jsonlEditFn(jsonp, text = '', jsonExtract) {
+    const safe = safeSelf();
+    const lineSeparator = /\r?\n/.exec(text)?.[0] || '\n';
+    const linesBefore = text.split('\n');
+    const linesAfter = [];
+    for ( const lineBefore of linesBefore ) {
+        const match = jsonExtract.exec(lineBefore);
+        if ( match === null ) {
+            linesAfter.push(lineBefore);
+            continue;
+        }
+        const jsonBefore = match[1];
+        let obj;
+        try { obj = safe.JSON_parse(jsonBefore); } catch { }
+        if ( typeof obj !== 'object' || obj === null ) {
+            linesAfter.push(lineBefore);
+            continue;
+        }
+        const objAfter = jsonp.apply(obj);
+        if ( objAfter === undefined ) {
+            linesAfter.push(lineBefore);
+            continue;
+        }
+        const jsonAfter = safe.JSON_stringify(objAfter);
+        const lineAfter = [
+            lineBefore.slice(0, match.index),
+            jsonAfter,
+            lineBefore.slice(match.index + jsonBefore.length),
+        ].join('');
+        linesAfter.push(lineAfter);
+    }
+    return linesAfter.join(lineSeparator);
+}
+
+function jsonlEditXhrResponse(jsonq = '', ...args) {
+    jsonlEditXhrResponseFn(false, jsonq, ...args);
+}
+
+function jsonlEditXhrResponseFn(trusted, jsonq = '', ...varargs) {
+    const safe = safeSelf();
+    const logPrefix = safe.makeLogPrefix(
+        `${trusted ? 'trusted-' : ''}jsonl-edit-xhr-response`,
+        jsonq
+    );
+    const xhrInstances = new WeakMap();
+    const jsonp = JSONPath.create(jsonq);
+    if ( jsonp.valid === false || jsonp.value !== undefined && trusted !== true ) {
+        return safe.uboLog(logPrefix, 'Bad JSONPath query');
+    }
+    const extraArgs = safe.parseVarargs(varargs);
+    const propNeedles = parsePropertiesToMatchFn(extraArgs.propsToMatch, 'url');
+    const jsonExtract = extraArgs.jsonExtract
+        ? new RegExp(extraArgs.jsonExtract)
+        : /^(.*)$/;
+    self.XMLHttpRequest = class extends self.XMLHttpRequest {
+        open(method, url, ...args) {
+            const xhrDetails = { method, url };
+            const matched = propNeedles.size === 0 ||
+                matchObjectPropertiesFn(propNeedles, xhrDetails);
+            if ( matched ) {
+                if ( safe.logLevel > 1 && Array.isArray(matched) ) {
+                    safe.uboLog(logPrefix, `Matched "propsToMatch":\n\t${matched.join('\n\t')}`);
+                }
+                xhrInstances.set(this, xhrDetails);
+            }
+            return super.open(method, url, ...args);
+        }
+        get response() {
+            const innerResponse = super.response;
+            const xhrDetails = xhrInstances.get(this);
+            if ( xhrDetails === undefined ) {
+                return innerResponse;
+            }
+            const responseLength = typeof innerResponse === 'string'
+                ? innerResponse.length
+                : undefined;
+            if ( xhrDetails.lastResponseLength !== responseLength ) {
+                xhrDetails.response = undefined;
+                xhrDetails.lastResponseLength = responseLength;
+            }
+            if ( xhrDetails.response !== undefined ) {
+                return xhrDetails.response;
+            }
+            if ( typeof innerResponse !== 'string' ) {
+                return (xhrDetails.response = innerResponse);
+            }
+            const outerResponse = jsonlEditFn(jsonp, innerResponse, jsonExtract);
+            if ( outerResponse !== innerResponse ) {
+                safe.uboLog(logPrefix, 'Pruned');
+            }
+            return (xhrDetails.response = outerResponse);
+        }
+        get responseText() {
+            const response = this.response;
+            return typeof response !== 'string'
+                ? super.responseText
+                : response;
+        }
+    };
+}
+
 function jsonPrune(
     rawPrunePaths = '',
     rawNeedlePaths = '',
@@ -1665,172 +1836,6 @@ function jsonPruneXhrResponse(
     };
 }
 
-function jsonlEditFetchResponse(jsonq = '', ...args) {
-    jsonlEditFetchResponseFn(false, jsonq, ...args);
-}
-
-function jsonlEditFetchResponseFn(trusted, jsonq = '', ...varargs) {
-    const safe = safeSelf();
-    const logPrefix = safe.makeLogPrefix(
-        `${trusted ? 'trusted-' : ''}jsonl-edit-fetch-response`,
-        jsonq
-    );
-    const jsonp = JSONPath.create(jsonq);
-    if ( jsonp.valid === false || jsonp.value !== undefined && trusted !== true ) {
-        return safe.uboLog(logPrefix, 'Bad JSONPath query');
-    }
-    const extraArgs = safe.parseVarargs(varargs);
-    const propNeedles = parsePropertiesToMatchFn(extraArgs.propsToMatch, 'url');
-    const jsonExtract = extraArgs.jsonExtract
-        ? new RegExp(extraArgs.jsonExtract)
-        : /^(.*)$/;
-    const logall = jsonq === '';
-    proxyApplyFn('fetch', function(context) {
-        const args = context.callArgs;
-        const fetchPromise = context.reflect();
-        if ( propNeedles.size !== 0 ) {
-            const props = collateFetchArgumentsFn(...args);
-            const matched = matchObjectPropertiesFn(propNeedles, props);
-            if ( matched === undefined ) { return fetchPromise; }
-            if ( safe.logLevel > 1 ) {
-                safe.uboLog(logPrefix, `Matched "propsToMatch":\n\t${matched.join('\n\t')}`);
-            }
-        }
-        return fetchPromise.then(responseBefore => {
-            const response = responseBefore.clone();
-            return response.text().then(textBefore => {
-                if ( typeof textBefore !== 'string' ) { return textBefore; }
-                if ( logall ) {
-                    safe.uboLog(logPrefix, textBefore);
-                    return responseBefore;
-                }
-                const textAfter = jsonlEditFn(jsonp, textBefore, jsonExtract);
-                if ( textAfter === textBefore ) { return responseBefore; }
-                safe.uboLog(logPrefix, 'Pruned');
-                const responseAfter = new Response(textAfter, {
-                    status: responseBefore.status,
-                    statusText: responseBefore.statusText,
-                    headers: responseBefore.headers,
-                });
-                Object.defineProperties(responseAfter, {
-                    ok: { value: responseBefore.ok },
-                    redirected: { value: responseBefore.redirected },
-                    type: { value: responseBefore.type },
-                    url: { value: responseBefore.url },
-                });
-                return responseAfter;
-            }).catch(reason => {
-                safe.uboErr(logPrefix, 'Error:', reason);
-                return responseBefore;
-            });
-        }).catch(reason => {
-            safe.uboErr(logPrefix, 'Error:', reason);
-            return fetchPromise;
-        });
-    });
-}
-
-function jsonlEditFn(jsonp, text = '', jsonExtract) {
-    const safe = safeSelf();
-    const lineSeparator = /\r?\n/.exec(text)?.[0] || '\n';
-    const linesBefore = text.split('\n');
-    const linesAfter = [];
-    for ( const lineBefore of linesBefore ) {
-        const match = jsonExtract.exec(lineBefore);
-        if ( match === null ) {
-            linesAfter.push(lineBefore);
-            continue;
-        }
-        const jsonBefore = match[1];
-        let obj;
-        try { obj = safe.JSON_parse(jsonBefore); } catch { }
-        if ( typeof obj !== 'object' || obj === null ) {
-            linesAfter.push(lineBefore);
-            continue;
-        }
-        const objAfter = jsonp.apply(obj);
-        if ( objAfter === undefined ) {
-            linesAfter.push(lineBefore);
-            continue;
-        }
-        const jsonAfter = safe.JSON_stringify(objAfter);
-        const lineAfter = [
-            lineBefore.slice(0, match.index),
-            jsonAfter,
-            lineBefore.slice(match.index + jsonBefore.length),
-        ].join('');
-        linesAfter.push(lineAfter);
-    }
-    return linesAfter.join(lineSeparator);
-}
-
-function jsonlEditXhrResponse(jsonq = '', ...args) {
-    jsonlEditXhrResponseFn(false, jsonq, ...args);
-}
-
-function jsonlEditXhrResponseFn(trusted, jsonq = '', ...varargs) {
-    const safe = safeSelf();
-    const logPrefix = safe.makeLogPrefix(
-        `${trusted ? 'trusted-' : ''}jsonl-edit-xhr-response`,
-        jsonq
-    );
-    const xhrInstances = new WeakMap();
-    const jsonp = JSONPath.create(jsonq);
-    if ( jsonp.valid === false || jsonp.value !== undefined && trusted !== true ) {
-        return safe.uboLog(logPrefix, 'Bad JSONPath query');
-    }
-    const extraArgs = safe.parseVarargs(varargs);
-    const propNeedles = parsePropertiesToMatchFn(extraArgs.propsToMatch, 'url');
-    const jsonExtract = extraArgs.jsonExtract
-        ? new RegExp(extraArgs.jsonExtract)
-        : /^(.*)$/;
-    self.XMLHttpRequest = class extends self.XMLHttpRequest {
-        open(method, url, ...args) {
-            const xhrDetails = { method, url };
-            const matched = propNeedles.size === 0 ||
-                matchObjectPropertiesFn(propNeedles, xhrDetails);
-            if ( matched ) {
-                if ( safe.logLevel > 1 && Array.isArray(matched) ) {
-                    safe.uboLog(logPrefix, `Matched "propsToMatch":\n\t${matched.join('\n\t')}`);
-                }
-                xhrInstances.set(this, xhrDetails);
-            }
-            return super.open(method, url, ...args);
-        }
-        get response() {
-            const innerResponse = super.response;
-            const xhrDetails = xhrInstances.get(this);
-            if ( xhrDetails === undefined ) {
-                return innerResponse;
-            }
-            const responseLength = typeof innerResponse === 'string'
-                ? innerResponse.length
-                : undefined;
-            if ( xhrDetails.lastResponseLength !== responseLength ) {
-                xhrDetails.response = undefined;
-                xhrDetails.lastResponseLength = responseLength;
-            }
-            if ( xhrDetails.response !== undefined ) {
-                return xhrDetails.response;
-            }
-            if ( typeof innerResponse !== 'string' ) {
-                return (xhrDetails.response = innerResponse);
-            }
-            const outerResponse = jsonlEditFn(jsonp, innerResponse, jsonExtract);
-            if ( outerResponse !== innerResponse ) {
-                safe.uboLog(logPrefix, 'Pruned');
-            }
-            return (xhrDetails.response = outerResponse);
-        }
-        get responseText() {
-            const response = this.response;
-            return typeof response !== 'string'
-                ? super.responseText
-                : response;
-        }
-    };
-}
-
 function m3uPrune(
     m3uPattern = '',
     urlPattern = ''
@@ -1990,26 +1995,6 @@ function m3uPrune(
     });
 }
 
-function matchObjectPropertiesFn(propNeedles, ...objs) {
-    const safe = safeSelf();
-    const matched = [];
-    for ( const obj of objs ) {
-        if ( obj instanceof Object === false ) { continue; }
-        for ( const [ prop, details ] of propNeedles ) {
-            let value = obj[prop];
-            if ( value === undefined ) { continue; }
-            if ( typeof value !== 'string' ) {
-                try { value = safe.JSON_stringify(value); }
-                catch { }
-                if ( typeof value !== 'string' ) { continue; }
-            }
-            if ( safe.testPattern(details, value) === false ) { return; }
-            matched.push(`${prop}: ${value}`);
-        }
-    }
-    return matched;
-}
-
 function matchesStackTraceFn(
     needleDetails,
     logLevel = ''
@@ -2053,6 +2038,26 @@ function matchesStackTraceFn(
         safe.uboLog(stack.replace(/\t/g, '\n'));
     }
     return r;
+}
+
+function matchObjectPropertiesFn(propNeedles, ...objs) {
+    const safe = safeSelf();
+    const matched = [];
+    for ( const obj of objs ) {
+        if ( obj instanceof Object === false ) { continue; }
+        for ( const [ prop, details ] of propNeedles ) {
+            let value = obj[prop];
+            if ( value === undefined ) { continue; }
+            if ( typeof value !== 'string' ) {
+                try { value = safe.JSON_stringify(value); }
+                catch { }
+                if ( typeof value !== 'string' ) { continue; }
+            }
+            if ( safe.testPattern(details, value) === false ) { return; }
+            matched.push(`${prop}: ${value}`);
+        }
+    }
+    return matched;
 }
 
 function modifyXhrResponseFn(
@@ -4524,7 +4529,44 @@ function xmlPrune(
     });
 }
 
-function zeta_19f0cd32bb844b998a8a895fd108f410() { // google-ima.js
+function zeta_5168a867aabb47038e2d76db79dad6f4() { // fingerprint2.js
+// Reference:
+// https://github.com/fingerprintjs/fingerprintjs/tree/v2
+
+(function() {
+    'use strict';
+    const hex32 = len => {
+        return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
+            .toString(16)
+            .slice(-len)
+            .padStart(len, '0');
+    };
+    const browserId = `${hex32(8)}${hex32(8)}${hex32(8)}${hex32(8)}`;
+    const fp2 = function(){};
+    fp2.get = function(opts, cb) {
+        if ( !cb  ) { cb = opts; }
+        setTimeout(( ) => { cb([]); }, 1);
+    };
+    fp2.getPromise = function() {
+        return Promise.resolve([]);
+    };
+    fp2.getV18 = function() {
+        return browserId;
+    };
+    fp2.x64hash128 = function() {
+        return browserId;
+    };
+    fp2.prototype = {
+        get: function(opts, cb) {
+            if ( !cb  ) { cb = opts; }
+            setTimeout(( ) => { cb(browserId, []); }, 1);
+        },
+    };
+    self.Fingerprint2 = self.Fingerprint = fp2;
+})();
+}
+
+function zeta_ab19301bef5049db8d4d09ed3c7c6f08() { // google-ima.js
 'use strict';
 
 
@@ -5153,44 +5195,7 @@ if (!window.google || !window.google.ima || !window.google.ima.VERSION) {
 }
 }
 
-function zeta_1ca22f0f92be4e63805de20b7d20779b() { // fingerprint2.js
-// Reference:
-// https://github.com/fingerprintjs/fingerprintjs/tree/v2
-
-(function() {
-    'use strict';
-    const hex32 = len => {
-        return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
-            .toString(16)
-            .slice(-len)
-            .padStart(len, '0');
-    };
-    const browserId = `${hex32(8)}${hex32(8)}${hex32(8)}${hex32(8)}`;
-    const fp2 = function(){};
-    fp2.get = function(opts, cb) {
-        if ( !cb  ) { cb = opts; }
-        setTimeout(( ) => { cb([]); }, 1);
-    };
-    fp2.getPromise = function() {
-        return Promise.resolve([]);
-    };
-    fp2.getV18 = function() {
-        return browserId;
-    };
-    fp2.x64hash128 = function() {
-        return browserId;
-    };
-    fp2.prototype = {
-        get: function(opts, cb) {
-            if ( !cb  ) { cb = opts; }
-            setTimeout(( ) => { cb(browserId, []); }, 1);
-        },
-    };
-    self.Fingerprint2 = self.Fingerprint = fp2;
-})();
-}
-
-function zeta_28ab5c1e9fd944d1a2d4c249bdd9e188() { // nobab2.js
+function zeta_3f461d50e1b348ac814d84f8127e1e74() { // nobab2.js
 (function() {
     'use strict';
     const script = document.currentScript;
@@ -5214,7 +5219,7 @@ function zeta_28ab5c1e9fd944d1a2d4c249bdd9e188() { // nobab2.js
 })();
 }
 
-function zeta_804d60bcecd440d48b2cfbaf2763674a() { // noeval.js
+function zeta_7e653cc8c94848d988be5d4be6269cf7() { // noeval.js
 (function() {
     'use strict';
     const log = console.log.bind(console);
@@ -5226,19 +5231,7 @@ function zeta_804d60bcecd440d48b2cfbaf2763674a() { // noeval.js
 })();
 }
 
-function zeta_8b4c523ce3e14eb2a5e40407180c5b0a() { // popads-dummy.js
-(function() {
-    'use strict';
-    delete window.PopAds;
-    delete window.popns;
-    Object.defineProperties(window, {
-        PopAds: { value: {} },
-        popns: { value: {} }
-    });
-})();
-}
-
-function zeta_df82ae693e224ab08cf91f2052590512() { // nofab.js
+function zeta_ec1858f222ed4af1812b16a8858294d5() { // nofab.js
 (function() {
     'use strict';
     const noopfn = function() {
@@ -5287,6 +5280,18 @@ function zeta_df82ae693e224ab08cf91f2052590512() { // nofab.js
 })();
 }
 
+function zeta_58b54bec414247fa9205c71da2becc60() { // popads-dummy.js
+(function() {
+    'use strict';
+    delete window.PopAds;
+    delete window.popns;
+    Object.defineProperties(window, {
+        PopAds: { value: {} },
+        popns: { value: {} }
+    });
+})();
+}
+
 /******************************************************************************/
 
 scriptletGlobals.origins = (( ) => {
@@ -5329,11 +5334,11 @@ scriptletGlobals.origins = (( ) => {
     return out;
 })();
 
-scriptletGlobals.functionRefs = /* 59 */ [trustedEditInboundObject,adjustSetTimeout,jsonPruneFetchResponse,jsonPruneXhrResponse,trustedReplaceXhrResponse,trustedReplaceFetchResponse,trustedPreventDomBypass,jsonPrune,jsonEdit,jsonlEditXhrResponse,noWindowOpenIf,setConstant,abortCurrentScript,preventXhr,preventSetTimeout,preventFetch,trustedReplaceArgument,removeAttr,trustedOverrideElementMethod,abortOnPropertyRead,trustedReplaceOutboundText,trustedSuppressNativeMethod,preventAddEventListener,abortOnStackTrace,preventSetInterval,preventInnerHTML,adjustSetInterval,zeta_1ca22f0f92be4e63805de20b7d20779b,trustedSetConstant,jsonEditFetchResponse,zeta_804d60bcecd440d48b2cfbaf2763674a,abortOnPropertyWrite,noWebrtc,zeta_df82ae693e224ab08cf91f2052590512,zeta_8b4c523ce3e14eb2a5e40407180c5b0a,preventRequestAnimationFrame,noEvalIf,preventBab,trustedPreventFetch,disableNewtabLinks,trustedJsonEditFetchResponse,editObjectOnSetter,trustedJsonEdit,trustedJsonEditXhrResponse,preventClipboardWrite,jsonEditXhrResponse,xmlPrune,m3uPrune,trustedPreventXhr,spoofCSS,zeta_19f0cd32bb844b998a8a895fd108f410,alertBuster,preventCanvas,mpegdashPrune,jsonEditFetchRequest,proxyApplyConfig,jsonlEditFetchResponse,evaldataPrune,zeta_28ab5c1e9fd944d1a2d4c249bdd9e188];
+scriptletGlobals.functionRefs = /* 59 */ [trustedEditInboundObject,adjustSetTimeout,jsonPruneFetchResponse,jsonPruneXhrResponse,trustedReplaceXhrResponse,trustedReplaceFetchResponse,trustedPreventDomBypass,jsonPrune,jsonEdit,jsonlEditXhrResponse,noWindowOpenIf,setConstant,abortCurrentScript,preventXhr,preventSetTimeout,preventFetch,trustedReplaceArgument,abortOnPropertyRead,removeAttr,trustedOverrideElementMethod,trustedReplaceOutboundText,trustedSuppressNativeMethod,preventAddEventListener,abortOnStackTrace,adjustSetInterval,preventSetInterval,zeta_5168a867aabb47038e2d76db79dad6f4,trustedSetConstant,jsonEditFetchResponse,zeta_7e653cc8c94848d988be5d4be6269cf7,abortOnPropertyWrite,noWebrtc,zeta_ec1858f222ed4af1812b16a8858294d5,zeta_58b54bec414247fa9205c71da2becc60,preventRequestAnimationFrame,noEvalIf,preventBab,trustedPreventFetch,disableNewtabLinks,trustedJsonEditFetchResponse,preventInnerHTML,editObjectOnSetter,trustedJsonEdit,trustedJsonEditXhrResponse,preventClipboardWrite,jsonEditXhrResponse,xmlPrune,m3uPrune,trustedPreventXhr,spoofCSS,zeta_ab19301bef5049db8d4d09ed3c7c6f08,alertBuster,preventCanvas,mpegdashPrune,jsonEditFetchRequest,proxyApplyConfig,jsonlEditFetchResponse,evaldataPrune,zeta_3f461d50e1b348ac814d84f8127e1e74];
 
 /******************************************************************************/
 
 // End of local scope
-})("74f9600a-13a3-47bc-b856-40c6da158b89");
+})("dc258953-addd-43ba-88a8-66e22006432e");
 
 void 0;

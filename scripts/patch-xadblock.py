@@ -3,11 +3,14 @@
 
 Run after scripts/update-extensions.sh (which calls it). Idempotent; fails loudly if upstream changed shape.
 
-Fix: the extension hid any added timeline cell matching text rules ("Follow" button, empty cell, "Promoted"...).
+Fix: the extension hid any added timeline item matching text rules ("Follow" button, empty item, "Promoted"...).
 On a /status/<id> page the focal tweet matched them (it carries a "Follow @user" button for accounts you don't
 follow, and is inserted empty before React fills it), so opening a quote tweet showed only the reply chain.
-We now never touch the cell holding the focal tweet (or empty cells) on status pages, and skip non-element nodes
-(upstream threw on text nodes, aborting the rest of the mutation batch).
+We now never touch the item holding the focal tweet (or empty items) on status pages, and skip non-element nodes
+(upstream throws on text nodes, aborting the rest of the mutation batch).
+
+Targets upstream 1.4.4+, which matches X's <li> timeline items under <main>. (1.4.3 and earlier matched
+div[data-testId=cellInnerDiv] under #react-root, which X no longer renders.)
 """
 import pathlib, sys
 
@@ -20,9 +23,8 @@ KEEP = ('function winKeepCell(e){const n=location.pathname.match(/\\/status\\/(\
         'return""===(e.innerText||"").trim()||!!e.querySelector(\'a[href*="/status/\'+n[1]+\'"]\')}')
 edits = [
     ("function i(e){o.loggingEnabled", KEEP + "function i(e){o.loggingEnabled"),
-    ('a.addedNodes.forEach((l=>{const a=l.attributes.getNamedItem("data-testId");a&&"cellInnerDiv"===a.value&&(',
-     'a.addedNodes.forEach((l=>{if(1!==l.nodeType)return;const a=l.attributes.getNamedItem("data-testId");'
-     'a&&"cellInnerDiv"===a.value&&!winKeepCell(l)&&('),
+    ('s.addedNodes.forEach((e=>{"li"==e.tagName.toLowerCase()&&(',
+     's.addedNodes.forEach((e=>{if(1!==e.nodeType)return;"li"==e.tagName.toLowerCase()&&!winKeepCell(e)&&('),
 ]
 for old, new in edits:
     if src.count(old) != 1:

@@ -83,10 +83,10 @@ WinBrowse provides an isolated, standards-aligned extension environment bridging
 1. In SideStore, navigate to **Sources** &rarr; tap **+** (Add Source).
 2. Enter the source URL:
    ```text
-   https://example.workers.dev/source.json
+   https://<your-source-host>/source.json
    ```
 3. WinBrowse will appear in your app list ready to install and receive one-tap updates.
-4. Alternatively, download an unsigned `.ipa` from a CI run's artifacts on the ci-server instance (see [CI](#ci)) and sideload it.
+4. Alternatively, download an unsigned `.ipa` from a CI run's artifacts (see [CI](#ci)) and sideload it.
 
 ### TrollStore (iOS 15.0 – 17.0)
 Download the unsigned IPA from a CI run's artifacts (see [CI](#ci)) and open it directly with TrollStore for permanent, revokeless installation.
@@ -104,7 +104,7 @@ Download the unsigned IPA from a CI run's artifacts (see [CI](#ci)) and open it 
 ### Quick Start
 ```bash
 # Clone the repository
-git clone https://ci.example/ci-user/winbrowse.git
+git clone https://github.com/wkawa-dev/winbrowse.git
 cd winbrowse
 
 # Generate Xcode project from project.yml
@@ -129,7 +129,7 @@ scripts/build-ipa.sh
 
 ### CI
 
-Builds run on the ci-server instance on the CI server over private network; the iOS job runs on a host-mode Mac runner. Push to `main` for an unsigned IPA artifact; push a
+Builds run on a self-hosted CI server; the iOS job runs on a Mac runner in host mode. Push to `main` for an unsigned IPA artifact; push a
 `v*` tag to also publish it to the SideStore source. Details in **[docs/ci.md](docs/ci.md)**.
 
 ### Updating Extension Rules & Bundles

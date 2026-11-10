@@ -4,6 +4,8 @@ import WebKit
 struct SettingsView: View {
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var store: BrowserStore
+    @EnvironmentObject var router: Router
+    @ObservedObject private var passkeys = Passkeys.shared
     @State private var engine = SearchEngine.current
     @State private var bgAudio = BackgroundMedia.shared.enabled
     @State private var autoplay = WebViewFactory.shared.autoplayEnabled
@@ -38,6 +40,18 @@ struct SettingsView: View {
                                 WebViewFactory.shared.autoplayEnabled = v
                                 store.recycleWebViews()
                             }
+                    }
+
+                    MetroGroup(title: "passkeys") {
+                        Button { router.push(.passkeys) } label: {
+                            HStack {
+                                MetroRow(title: "saved passkeys",
+                                         value: passkeys.credentials.isEmpty ? "none saved on this device" : "\(passkeys.credentials.count) saved on this device")
+                                Image(systemName: "chevron.right").foregroundStyle(theme.subtle)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.tilt)
                     }
 
                     MetroGroup(title: "privacy") {

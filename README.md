@@ -53,6 +53,7 @@ Unlike browsers that require JIT or modified WebKit frameworks, WinBrowse runs c
 | **X-Posed 4.x** | The authentic X-Posed extension: displays geolocation country flags, account creation dates, and client information next to X (Twitter) handles. Background scripts communicate through a native cookie-forwarding fetch proxy. |
 | **The Ad Blocker for X** | Strips promoted ads, "Who to follow" recommendations, and sponsored threads directly from X's timeline via combined DOM observer and timeline JSON response interception. |
 | **Background Playback** | Keeps YouTube and web media playing when backgrounded or locked. Injects `document.visibilityState === "visible"` spoofing, configures `AVAudioSession` to `.playback`, automatically resumes paused WebKit playback, and integrates with Control Center / lock screen media controls. |
+| **Passkeys** | WinBrowse is its own WebAuthn authenticator (ES256). Keys are created on the device, kept in the iOS keychain, and unlocked with Face ID or the passcode for each use. Keys are not synced or backed up. Sites see a platform authenticator. Manage saved passkeys in Settings → passkeys. |
 | **Windows Phone Metro UI** | Clean, blank new-tab page, panoramic pivots, 3D tilt press animations, collapsible bottom app bar, and customizable Windows accent color palette (Cobalt, Crimson, Emerald, Amber, Violet, Cyan, Magenta, Lime, Orange, Steel). |
 | **Local Debug Control Port** | Embedded HTTP debug server listening on `localhost:8899` allowing CLI automation, remote URL opening, tab state querying, and JavaScript execution into page or extension worlds. |
 
@@ -165,10 +166,15 @@ curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" -d 'console.log("ping
 # Toggle bottom Metro menu
 curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/menu'
 
-# Navigate routes (tabs, settings, extensions, ublock, history)
+# Navigate routes (tabs, settings, extensions, ublock, history, passkeys)
 curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/route?r=tabs'
 curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/route?r=ublock'
 curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/route'          # pops back to browser view
+
+# Passkeys: auto=1 approves sign-in and sign-up prompts without UI, auto=0 shows them; list=1 prints saved passkeys
+# (no key material); delete=<credential id> removes one; clear=1 removes all
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/passkeys?auto=1'
+curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/passkeys?list=1'
 
 # Trigger extension popup modal
 curl -H "X-Debug-Token: $(cat /tmp/winbrowse-debug-token)" 'localhost:8899/popup?ext=sponsorblock'
@@ -194,6 +200,8 @@ winbrowse/
 │   ├── Browser/                 # Core browser state and WebView management
 │   │   ├── BrowserStore.swift   # Tab lifecycle, history, and persistence
 │   │   ├── DebugServer.swift    # Embedded localhost:8899 control server
+│   │   ├── PasskeyCodec.swift   # WebAuthn byte formats: authenticator data, attestation, ES256 signatures
+│   │   ├── Passkeys.swift       # Passkey authenticator: keychain storage, prompts, page bridge
 │   │   ├── Tab.swift            # WKWebView container and navigation state
 │   │   └── WebViewFactory.swift # UserContentController and WKProcessPool setup
 │   ├── Extensions/              # WebExtension runtime implementation
@@ -210,11 +218,13 @@ winbrowse/
 │   │   └── BackgroundMedia.swift # AVAudioSession .playback and visibilityState spoofing
 │   ├── Resources/               # Runtime JavaScript polyfills
 │   │   ├── compat-xadblock-main.js # Timeline interception scripts
+│   │   ├── passkeys.js          # navigator.credentials shim for WebAuthn sign-in and sign-up
 │   │   └── winext-shim.js       # chrome.* client-side polyfill
 │   ├── UI/                      # SwiftUI views and Metro interface
 │   │   ├── BrowserView.swift    # Main browser interface with bottom app bar
 │   │   ├── ExtensionViews.swift # Extension popups and settings views
 │   │   ├── MenuOverlay.swift    # Metro bottom menu overlay
+│   │   ├── PasskeysView.swift   # Saved passkeys list, opened from Settings
 │   │   ├── SettingsView.swift   # Settings and theme customization
 │   │   ├── StartPage.swift      # New-tab page (intentionally blank)
 │   │   └── Metro/               # Metro design system controls, pivots, and fonts

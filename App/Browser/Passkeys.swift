@@ -8,6 +8,7 @@ import WebKit
 /// A sideloaded browser can't reach iCloud Keychain passkeys from a WKWebView (that needs Apple's web-browser
 /// entitlement), so passkeys are created and kept here: private keys in the keychain, every use gated by
 /// Face ID / Touch ID / passcode, origin and rpId checked natively against the requesting frame.
+/// Byte formats live in PasskeyCodec.swift; passkeys.js is the page-side half.
 @MainActor
 final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithReply {
     static let shared = Passkeys()
@@ -29,7 +30,8 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
     #endif
 
     private static let service = "dev.winbrowse.passkeys"
-    private var cancelers: [Int: () -> Void] = [:]
+    /// Prompts waiting on the user, keyed by "<origin>#<request id>". Keying by origin means a page can only cancel its own.
+    private var cancelers: [String: () -> Void] = [:]
 
     override init() {
         super.init()
@@ -52,33 +54,53 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
                                replyHandler: @escaping (Any?, String?) -> Void) {
         guard let b = message.body as? [String: Any], let op = b["op"] as? String else { return replyHandler(nil, "bad request") }
         let req = b["req"] as? Int ?? 0
-        if op == "cancel" { cancelers.removeValue(forKey: req)?(); return replyHandler(nil, nil) }
-
         let origin = message.frameInfo.securityOrigin
+        let originString = Self.originString(origin)
+        let key = "\(originString)#\(req)"
+        if op == "cancel" { cancelers.removeValue(forKey: key)?(); return replyHandler(nil, nil) }
+
         guard origin.protocol == "https" || (origin.protocol == "http" && origin.host == "localhost") else {
             return replyHandler(Self.err("SecurityError", "Passkeys need a secure origin."), nil)
         }
         let host = origin.host.lowercased()
-        var originString = "\(origin.protocol)://\(host)"
-        if origin.port != 0 && origin.port != (origin.protocol == "https" ? 443 : 80) { originString += ":\(origin.port)" }
-        // Cross-origin iframes would need permissions-policy checks; keep passkeys to the top site and its same-origin frames.
-        if !message.frameInfo.isMainFrame, let top = message.webView?.url?.host?.lowercased(), top != host {
-            return replyHandler(Self.err("NotAllowedError", "Passkeys aren't available in cross-origin frames."), nil)
+        // Cross-origin iframes would need permissions-policy checks, so only the top page's exact origin
+        // (scheme, host and port) and its same-origin frames may use passkeys.
+        if !message.frameInfo.isMainFrame {
+            let topURL = message.webView?.url
+            if topURL.map({ Self.originString($0) }) != originString {
+                return replyHandler(Self.err("NotAllowedError", "Passkeys aren't available in cross-origin frames."), nil)
+            }
         }
         let webView = message.webView
 
         Task {
             let result: [String: Any]
             switch op {
-            case "create": result = await create(b, host: host, origin: originString, req: req)
-            case "get": result = await get(b, host: host, origin: originString, req: req, webView: webView)
+            case "create": result = await create(b, host: host, origin: originString, key: key)
+            case "get": result = await get(b, host: host, origin: originString, key: key, webView: webView)
             default: result = Self.err("NotSupportedError", "Unknown operation")
             }
+            cancelers.removeValue(forKey: key)
             replyHandler(result, nil)
         }
     }
 
     private static func err(_ name: String, _ msg: String) -> [String: Any] { ["error": name, "message": msg] }
+
+    /// "scheme://host[:port]" with the scheme's default port left out, so URL and security-origin forms compare equal.
+    static func originString(scheme: String, host: String, port: Int) -> String {
+        let s = scheme.lowercased(), h = host.lowercased()
+        let defaultPort = s == "https" ? 443 : 80
+        return port == 0 || port == defaultPort ? "\(s)://\(h)" : "\(s)://\(h):\(port)"
+    }
+
+    static func originString(_ o: WKSecurityOrigin) -> String {
+        originString(scheme: o.protocol, host: o.host, port: o.port)
+    }
+
+    static func originString(_ u: URL) -> String {
+        originString(scheme: u.scheme ?? "", host: u.host ?? "", port: u.port ?? 0)
+    }
 
     /// The rpId must be the origin's host or a registrable parent of it.
     private static func validRP(_ rpId: String, host: String) -> Bool {
@@ -89,7 +111,7 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
 
     // MARK: - Registration
 
-    private func create(_ b: [String: Any], host: String, origin: String, req: Int) async -> [String: Any] {
+    private func create(_ b: [String: Any], host: String, origin: String, key requestKey: String) async -> [String: Any] {
         let rp = b["rp"] as? [String: Any] ?? [:]
         let rpId = ((rp["id"] as? String) ?? host).lowercased()
         guard Self.validRP(rpId, host: host) else { return Self.err("SecurityError", "The relying party ID is not a registrable domain suffix of the origin.") }
@@ -107,44 +129,33 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         }
 
         let shown = userName.isEmpty ? displayName : userName
-        guard await confirm(req: req, title: "Save a passkey?",
+        guard await confirm(key: requestKey, title: "Save a passkey?",
                             message: "Create a passkey for \(shown.isEmpty ? "your account" : shown) on \(rpId). It is stored in WinBrowse and unlocked with \(Self.biometryName).",
                             action: "Continue"),
               await verifyUser(reason: "Create a passkey for \(rpId)") else {
             return Self.err("NotAllowedError", "The operation either timed out or was not allowed.")
         }
 
-        let key = P256.Signing.PrivateKey()
+        let privateKey = P256.Signing.PrivateKey()
         var idBytes = [UInt8](repeating: 0, count: 16)
         _ = SecRandomCopyBytes(kSecRandomDefault, idBytes.count, &idBytes)
         let credId = Data(idBytes)
 
-        let clientData = Self.clientData(type: "webauthn.create", challenge: challenge, origin: origin)
-        let pub = key.publicKey.rawRepresentation // x || y
-        var cose = Data([0xA5, 0x01, 0x02, 0x03, 0x26, 0x20, 0x01, 0x21, 0x58, 0x20])
-        cose += pub.prefix(32)
-        cose += Data([0x22, 0x58, 0x20])
-        cose += pub.suffix(32)
-        var authData = Self.authDataHeader(rpId: rpId, flags: 0x01 | 0x04 | 0x08 | 0x10 | 0x40)
-        authData += Data(count: 16) // AAGUID
-        authData += Data([UInt8(credId.count >> 8), UInt8(credId.count & 0xff)])
-        authData += credId
-        authData += cose
-
-        var att = Data([0xA3])
-        att += Self.cborText("fmt") + Self.cborText("none")
-        att += Self.cborText("attStmt") + Data([0xA0])
-        att += Self.cborText("authData") + Self.cborBytes(authData)
-
+        let clientData = PasskeyCodec.clientData(type: "webauthn.create", challenge: challenge, origin: origin)
+        let authData = PasskeyCodec.registrationAuthData(rpId: rpId, credentialId: credId, publicKey: privateKey.publicKey)
         let cred = Credential(id: credId.b64u, rpId: rpId, userHandle: userHandle, userName: userName, displayName: displayName,
-                              key: key.rawRepresentation, created: Date(), lastUsed: nil)
+                              key: privateKey.rawRepresentation, created: Date(), lastUsed: nil)
+        // Registering the same account on the same site again replaces its passkey rather than adding a second one.
+        let replaced = credentials.first { $0.rpId == rpId && $0.userHandle == userHandle }
         guard save(cred) else { return Self.err("UnknownError", "Couldn't save the passkey to the keychain.") }
+        if let replaced { remove(replaced) }
         credentials.insert(cred, at: 0)
         Toasts.shared.show("passkey saved for \(rpId)")
 
         var out: [String: Any] = [
-            "id": cred.id, "clientDataJSON": clientData.b64u, "attestationObject": att.b64u,
-            "authenticatorData": authData.b64u, "publicKey": key.publicKey.derRepresentation.b64u,
+            "id": cred.id, "clientDataJSON": clientData.b64u,
+            "attestationObject": PasskeyCodec.attestationObject(authData: authData).b64u,
+            "authenticatorData": authData.b64u, "publicKey": privateKey.publicKey.derRepresentation.b64u,
         ]
         if let ext = b["extensions"] as? [String: Any], ext["credProps"] != nil { out["extensions"] = ["credProps": ["rk": true]] }
         return out
@@ -152,7 +163,7 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
 
     // MARK: - Sign-in
 
-    private func get(_ b: [String: Any], host: String, origin: String, req: Int, webView: WKWebView?) async -> [String: Any] {
+    private func get(_ b: [String: Any], host: String, origin: String, key requestKey: String, webView: WKWebView?) async -> [String: Any] {
         let rpId = ((b["rpId"] as? String) ?? host).lowercased()
         guard Self.validRP(rpId, host: host) else { return Self.err("SecurityError", "The relying party ID is not a registrable domain suffix of the origin.") }
         guard let challenge = b["challenge"] as? String else { return Self.err("TypeError", "Missing challenge.") }
@@ -170,46 +181,23 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
             try? await Task.sleep(nanoseconds: 600_000_000)
             if let webView, webView.window == nil { return ["pending": true] }
         }
-        guard let chosen = await choose(matches, rpId: rpId, req: req),
+        guard let chosen = await choose(matches, rpId: rpId, key: requestKey),
               await verifyUser(reason: "Sign in to \(rpId)") else {
             return conditional ? ["pending": true] : Self.err("NotAllowedError", "The operation either timed out or was not allowed.")
         }
-        guard let key = try? P256.Signing.PrivateKey(rawRepresentation: chosen.key) else { return Self.err("UnknownError", "Passkey is damaged.") }
+        guard let privateKey = try? P256.Signing.PrivateKey(rawRepresentation: chosen.key) else { return Self.err("UnknownError", "Passkey is damaged.") }
 
-        let clientData = Self.clientData(type: "webauthn.get", challenge: challenge, origin: origin)
-        let authData = Self.authDataHeader(rpId: rpId, flags: 0x01 | 0x04 | 0x08 | 0x10)
-        guard let sig = try? key.signature(for: authData + Data(SHA256.hash(data: clientData))) else {
+        let clientData = PasskeyCodec.clientData(type: "webauthn.get", challenge: challenge, origin: origin)
+        let authData = PasskeyCodec.assertionAuthData(rpId: rpId)
+        guard let sig = try? PasskeyCodec.assertionSignature(privateKey, authData: authData, clientData: clientData) else {
             return Self.err("UnknownError", "Signing failed.")
         }
         var used = chosen; used.lastUsed = Date()
         if save(used), let i = credentials.firstIndex(where: { $0.id == used.id }) { credentials[i] = used }
         return [
             "id": chosen.id, "clientDataJSON": clientData.b64u, "authenticatorData": authData.b64u,
-            "signature": sig.derRepresentation.b64u, "userHandle": chosen.userHandle,
+            "signature": sig.b64u, "userHandle": chosen.userHandle,
         ]
-    }
-
-    // MARK: - WebAuthn encoding
-
-    private static func clientData(type: String, challenge: String, origin: String) -> Data {
-        // Hand-built so key order matches browsers (type, challenge, origin, crossOrigin).
-        func q(_ s: String) -> String {
-            let d = try? JSONSerialization.data(withJSONObject: [s], options: [.withoutEscapingSlashes])
-            return d.flatMap { String(data: $0, encoding: .utf8) }.map { String($0.dropFirst().dropLast()) } ?? "\"\""
-        }
-        return Data("{\"type\":\(q(type)),\"challenge\":\(q(challenge)),\"origin\":\(q(origin)),\"crossOrigin\":false}".utf8)
-    }
-
-    private static func authDataHeader(rpId: String, flags: UInt8) -> Data {
-        Data(SHA256.hash(data: Data(rpId.utf8))) + Data([flags, 0, 0, 0, 0]) // sign count 0: synced-passkey style
-    }
-
-    private static func cborText(_ s: String) -> Data { Data([0x60 | UInt8(s.utf8.count)]) + Data(s.utf8) }
-
-    private static func cborBytes(_ d: Data) -> Data {
-        if d.count < 24 { return Data([0x40 | UInt8(d.count)]) + d }
-        if d.count < 256 { return Data([0x58, UInt8(d.count)]) + d }
-        return Data([0x59, UInt8(d.count >> 8), UInt8(d.count & 0xff)]) + d
     }
 
     // MARK: - UI
@@ -236,7 +224,7 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         return (try? await c.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
     }
 
-    private func confirm(req: Int, title: String, message: String, action: String) async -> Bool {
+    private func confirm(key: String, title: String, message: String, action: String) async -> Bool {
         #if DEBUG
         if autoApprove { return true }
         #endif
@@ -247,11 +235,11 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
             a.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in finish(false) })
             a.addAction(UIAlertAction(title: action, style: .default) { _ in finish(true) })
             a.preferredAction = a.actions.last
-            present(a, req: req, finish: finish)
+            present(a, key: key, finish: finish)
         }
     }
 
-    private func choose(_ list: [Credential], rpId: String, req: Int) async -> Credential? {
+    private func choose(_ list: [Credential], rpId: String, key: String) async -> Credential? {
         #if DEBUG
         if autoApprove { return list.first }
         #endif
@@ -266,18 +254,18 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
             }
             a.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in finish(nil) })
             if list.count == 1 { a.preferredAction = a.actions.first }
-            present(a, req: req) { _ in finish(nil) }
+            present(a, key: key) { _ in finish(nil) }
         }
     }
 
-    private func present(_ a: UIAlertController, req: Int, finish: @escaping (Bool) -> Void) {
+    private func present(_ a: UIAlertController, key: String, finish: @escaping (Bool) -> Void) {
         guard let top = Dialogs.top else { return finish(false) }
         if let pop = a.popoverPresentationController {
             pop.sourceView = top.view
             pop.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
             pop.permittedArrowDirections = []
         }
-        cancelers[req] = { [weak a] in a?.dismiss(animated: true); finish(false) }
+        cancelers[key] = { [weak a] in a?.dismiss(animated: true); finish(false) }
         top.present(a, animated: true)
     }
 
@@ -308,14 +296,10 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         return items.compactMap { try? JSONDecoder().decode(Credential.self, from: $0) }.sorted { $0.created > $1.created }
     }
 
-    func delete(_ c: Credential) {
+    func delete(_ c: Credential) { remove(c) }
+
+    private func remove(_ c: Credential) {
         SecItemDelete(Self.baseQuery(c.id) as CFDictionary)
         credentials.removeAll { $0.id == c.id }
-    }
-}
-
-extension Data {
-    var b64u: String {
-        base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
 }

@@ -6,6 +6,7 @@ enum Route: Hashable {
     case extensions
     case ublock
     case history
+    case passkeys
 }
 
 /// Pages pushed over the browser, with the Metro turnstile transition.

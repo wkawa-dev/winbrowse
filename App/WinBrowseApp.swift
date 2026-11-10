@@ -145,6 +145,7 @@ struct RootView: View {
         case .extensions: ExtensionsView()
         case .ublock: UBlockView()
         case .history: HistoryView()
+        case .passkeys: PasskeysView()
         }
     }
 }

@@ -117,7 +117,7 @@ final class DebugServer {
         case "/menu":
             Router.shared.toggleMenu(); return "ok"
         case "/route":
-            let r: [String: Route] = ["tabs": .tabs, "settings": .settings, "extensions": .extensions, "ublock": .ublock, "history": .history]
+            let r: [String: Route] = ["tabs": .tabs, "settings": .settings, "extensions": .extensions, "ublock": .ublock, "history": .history, "passkeys": .passkeys]
             if let x = r[q["r"] ?? ""] { Router.shared.push(x) } else { Router.shared.popToRoot(); store.presentedExtensionPage = nil }
             return "ok"
         case "/popup":
@@ -130,6 +130,16 @@ final class DebugServer {
         case "/ext":
             if let id = q["id"] { ExtensionHost.shared.setEnabled(id, q["on"] == "1"); WebViewFactory.shared.rebuildScripts(); store.active?.webView?.reload() }
             return "ok"
+        case "/passkeys":
+            // Passkey test hooks: auto=1 approves prompts without UI and auto=0 shows them; list=1 dumps saved passkeys
+            // (no key material); delete=<credential id> removes one; clear=1 removes all.
+            let pk = Passkeys.shared
+            if let a = q["auto"] { pk.autoApprove = a == "1" }
+            if q["clear"] == "1" { for c in pk.credentials { pk.delete(c) } }
+            if let id = q["delete"], let c = pk.credentials.first(where: { $0.id == id }) { pk.delete(c) }
+            return jsonString(pk.credentials.map {
+                ["id": $0.id, "rpId": $0.rpId, "userHandle": $0.userHandle, "user": $0.userName, "created": $0.created.timeIntervalSince1970] as [String: Any]
+            })
         case "/select":
             if let i = Int(q["i"] ?? ""), i < store.tabs.count { store.select(store.tabs[i]) }
             return "ok"

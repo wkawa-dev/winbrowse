@@ -33,12 +33,12 @@
       const attestationObject = unb64u(r.attestationObject), publicKey = unb64u(r.publicKey);
       define(response, {
         clientDataJSON, attestationObject,
-        getTransports: () => ['internal', 'hybrid'],
+        getTransports: () => ['internal'],
         getAuthenticatorData: () => authenticatorData,
         getPublicKey: () => publicKey,
         getPublicKeyAlgorithm: () => -7,
         toJSON: () => ({ clientDataJSON: r.clientDataJSON, attestationObject: r.attestationObject, authenticatorData: r.authenticatorData,
-          transports: ['internal', 'hybrid'], publicKey: r.publicKey, publicKeyAlgorithm: -7 }),
+          transports: ['internal'], publicKey: r.publicKey, publicKeyAlgorithm: -7 }),
       });
     } else {
       define(response, {
@@ -57,7 +57,9 @@
     });
   }
 
-  let seq = 0;
+  // Request ids start at a random 52-bit base per page context, so frames and tabs never share one. The native side
+  // keys prompts by origin plus id, so a stray cancel can't hit another request.
+  let seq = Math.floor(Math.random() * 2 ** 52);
   function run(kind, body, signal) {
     if (signal && signal.aborted) return Promise.reject(signal.reason || fail('AbortError', 'The operation was aborted.'));
     const req = ++seq;

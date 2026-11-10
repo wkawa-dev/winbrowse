@@ -51,6 +51,7 @@ targets:
         NSMicrophoneUsageDescription: Websites can ask to use the microphone.
         NSLocationWhenInUseUsageDescription: Websites can ask for your location.
         NSPhotoLibraryAddUsageDescription: Save images from web pages.
+        NSFaceIDUsageDescription: Passkeys unlock with Face ID when a site asks you to sign in.
         CFBundleURLTypes:
           - CFBundleURLName: dev.winbrowse.browser
             CFBundleURLSchemes: [winbrowse]

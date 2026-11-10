@@ -35,6 +35,7 @@ final class WebViewFactory {
         for (ucc, withUBO) in [(filtered, true), (unfiltered, false)] {
             ucc.removeAllUserScripts()
             BackgroundMedia.shared.install(into: ucc)
+            Passkeys.shared.install(into: ucc)
             if withUBO, ContentBlocker.shared.enabled {
                 UBOScripts.shared.install(into: ucc, rulesets: ContentBlocker.shared.enabledIds.sorted())
             }

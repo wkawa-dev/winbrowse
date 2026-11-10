@@ -20,11 +20,15 @@
 		5C85365BBECCB93B50A007C7 /* UBOScripts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB0541BA5A20AA29A7DC396 /* UBOScripts.swift */; };
 		623241AAA3259838300683DC /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CD789782AE9E6C64AB0603 /* Controls.swift */; };
 		6631142DAA426473CD275638 /* ExtensionStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9BE37FDA810EED360B13338 /* ExtensionStorage.swift */; };
+		71C6846D4223872A9E22C1BD /* Passkeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4D79B6C3239014516B5E8F5 /* Passkeys.swift */; };
 		71F8D1197577FFF1E0024CEC /* WinextSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B9FED15767BCC81CC9B64EF /* WinextSchemeHandler.swift */; };
+		7717876984645CDCC28D5ACA /* passkeys.js in Resources */ = {isa = PBXBuildFile; fileRef = 2406A78468E601822A543F44 /* passkeys.js */; };
 		81320773DEA442D279AFB596 /* Extensions-bundle in Resources */ = {isa = PBXBuildFile; fileRef = 8D2F8F10159275D64F7C45F2 /* Extensions-bundle */; };
 		8292E365BFB5DFB263AB6B3F /* MenuOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C40A056D9039D16C101B60 /* MenuOverlay.swift */; };
 		8A44EAB5168D38953B977B29 /* Navigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC469095C723DD41B094208A /* Navigation.swift */; };
 		9E60EFF229F42CF5E4896003 /* DebugServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0AB651756FF514DD48E2893 /* DebugServer.swift */; };
+		9F4FAEE54B96A1A01E16454B /* PasskeysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 911CB5C4BC3E79139AE848B6 /* PasskeysView.swift */; };
+		A582E0BF6A5BDE70B600129C /* PasskeyCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE34613BC69D54378550FEB /* PasskeyCodec.swift */; };
 		A7C9B75DB9B04331C7B8C330 /* ExtensionHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C3FDA9E3BDCCA9B44FEB8A /* ExtensionHost.swift */; };
 		C44DDBB589EDE8A1C2425B17 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B607E76600C642F25FB096B2 /* BrowserView.swift */; };
 		D08061B69510E19B73AF5E94 /* ExtensionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036FEF5FE544CDC9DEBB8150 /* ExtensionViews.swift */; };
@@ -41,6 +45,7 @@
 		06749F7828D7025DD5AF0935 /* StartPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartPage.swift; sourceTree = "<group>"; };
 		08C40A056D9039D16C101B60 /* MenuOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuOverlay.swift; sourceTree = "<group>"; };
 		16E6E50F826D91EE79567A5C /* BackgroundMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundMedia.swift; sourceTree = "<group>"; };
+		2406A78468E601822A543F44 /* passkeys.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = passkeys.js; sourceTree = "<group>"; };
 		24E16DF9B7B24287051C395B /* WebContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebContainer.swift; sourceTree = "<group>"; };
 		4B9FED15767BCC81CC9B64EF /* WinextSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WinextSchemeHandler.swift; sourceTree = "<group>"; };
 		531C7B6B9EFA80D68972F98D /* compat-xadblock-main.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "compat-xadblock-main.js"; sourceTree = "<group>"; };
@@ -52,8 +57,10 @@
 		829E9B25CA9274DCD5A713DD /* WebExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebExtension.swift; sourceTree = "<group>"; };
 		87A3A423FAF518A7CDBA9502 /* Pivot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pivot.swift; sourceTree = "<group>"; };
 		8D2F8F10159275D64F7C45F2 /* Extensions-bundle */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "Extensions-bundle"; path = "App/Extensions-bundle"; sourceTree = SOURCE_ROOT; };
+		911CB5C4BC3E79139AE848B6 /* PasskeysView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeysView.swift; sourceTree = "<group>"; };
 		918111114AA12F3B6A59E1FE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		96CD789782AE9E6C64AB0603 /* Controls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controls.swift; sourceTree = "<group>"; };
+		A4D79B6C3239014516B5E8F5 /* Passkeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Passkeys.swift; sourceTree = "<group>"; };
 		AAD6B7BACE6C6C20EEA3997F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B607E76600C642F25FB096B2 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
 		C4E5FE9D4D883E04795F86B6 /* WinBrowseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WinBrowseApp.swift; sourceTree = "<group>"; };
@@ -66,6 +73,7 @@
 		EEBDF622B052D847B49C93E7 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
 		F0C3FDA9E3BDCCA9B44FEB8A /* ExtensionHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionHost.swift; sourceTree = "<group>"; };
 		FC469095C723DD41B094208A /* Navigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Navigation.swift; sourceTree = "<group>"; };
+		FCE34613BC69D54378550FEB /* PasskeyCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyCodec.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -90,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				531C7B6B9EFA80D68972F98D /* compat-xadblock-main.js */,
+				2406A78468E601822A543F44 /* passkeys.js */,
 				7302DD320A907FE38D3DDF7A /* winext-shim.js */,
 			);
 			path = Resources;
@@ -144,6 +153,8 @@
 			children = (
 				DB4AE1B56A5B0000F24E24DA /* BrowserStore.swift */,
 				D0AB651756FF514DD48E2893 /* DebugServer.swift */,
+				FCE34613BC69D54378550FEB /* PasskeyCodec.swift */,
+				A4D79B6C3239014516B5E8F5 /* Passkeys.swift */,
 				EEBDF622B052D847B49C93E7 /* Tab.swift */,
 				7CCB6DF68F9B44FF14E3B2F4 /* Vault.swift */,
 				D793E5A601C5D16E1F05D451 /* WebViewFactory.swift */,
@@ -168,6 +179,7 @@
 				B607E76600C642F25FB096B2 /* BrowserView.swift */,
 				036FEF5FE544CDC9DEBB8150 /* ExtensionViews.swift */,
 				08C40A056D9039D16C101B60 /* MenuOverlay.swift */,
+				911CB5C4BC3E79139AE848B6 /* PasskeysView.swift */,
 				AAD6B7BACE6C6C20EEA3997F /* SettingsView.swift */,
 				06749F7828D7025DD5AF0935 /* StartPage.swift */,
 				24E16DF9B7B24287051C395B /* WebContainer.swift */,
@@ -238,6 +250,7 @@
 				F4E4AFCC9F7929E470081ED4 /* Assets.xcassets in Resources */,
 				81320773DEA442D279AFB596 /* Extensions-bundle in Resources */,
 				312403B232A9E235E393877E /* compat-xadblock-main.js in Resources */,
+				7717876984645CDCC28D5ACA /* passkeys.js in Resources */,
 				43A5C03EB911B0BDC8B42986 /* winext-shim.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -260,6 +273,9 @@
 				D08061B69510E19B73AF5E94 /* ExtensionViews.swift in Sources */,
 				8292E365BFB5DFB263AB6B3F /* MenuOverlay.swift in Sources */,
 				8A44EAB5168D38953B977B29 /* Navigation.swift in Sources */,
+				A582E0BF6A5BDE70B600129C /* PasskeyCodec.swift in Sources */,
+				71C6846D4223872A9E22C1BD /* Passkeys.swift in Sources */,
+				9F4FAEE54B96A1A01E16454B /* PasskeysView.swift in Sources */,
 				259F44E959656A7111B949F4 /* Pivot.swift in Sources */,
 				DF076CAAFA88E9FFBDF58438 /* SettingsView.swift in Sources */,
 				56587829D78343AA85A80B42 /* StartPage.swift in Sources */,

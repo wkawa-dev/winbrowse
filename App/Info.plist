@@ -39,6 +39,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Websites can ask to use the camera.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Passkeys unlock with Face ID when a site asks you to sign in.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Websites can ask for your location.</string>
 	<key>NSMicrophoneUsageDescription</key>

@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # Builds the IPA and a SideStore/AltStore source, then deploys both as Workers static assets (deploy/).
 # Add the printed source URL once in SideStore → Sources; later builds show up as updates.
-# Usage: scripts/publish.sh   (override with SITE_URL=... CLOUDFLARE_ACCOUNT_ID=...)
+# Usage: SITE_URL=... CLOUDFLARE_ACCOUNT_ID=... scripts/publish.sh
+# Both values come from the environment, or from ~/.config/winbrowse/env (NAME=value lines) when that file exists.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-: "${SITE_URL:=https://example.workers.dev}"
-export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-00000000000000000000000000000000}"
+ENV_FILE="${WINBROWSE_ENV:-$HOME/.config/winbrowse/env}"
+if [ -f "$ENV_FILE" ]; then set -a; . "$ENV_FILE"; set +a; fi
+: "${SITE_URL:?set SITE_URL to the public address of the source, for example https://example.com}"
+: "${CLOUDFLARE_ACCOUNT_ID:?set CLOUDFLARE_ACCOUNT_ID to the Cloudflare account ID}"
+export CLOUDFLARE_ACCOUNT_ID
 SITE_URL="${SITE_URL%/}"
 # CI builds the IPA in an earlier job and passes it in (IPA=...); locally we refresh extensions and build it here.
 if [ -z "${IPA:-}" ]; then

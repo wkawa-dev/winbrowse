@@ -33,3 +33,15 @@ deploy/.cloudflare/
 .env
 .env.*
 !.env.example
+
+# Local-only notes and private keys
+CLAUDE.local.md
+AGENTS.local.md
+.claude/settings.local.json
+.dev.vars
+.envrc
+*.pem
+*.key
+*.p12
+*.p8
+*.mobileprovision

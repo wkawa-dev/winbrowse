@@ -4,13 +4,15 @@ This codebase is yours: what it's for and how it's built are your call, and you'
 
 ## Git workflow
 
-Do not create branches. Work, commit and push directly on `main`. The `origin` remote is the ci-server instance on the CI server (`https://ci.example/ci-user/winbrowse.git`); CI and releases run there, see `docs/ci.md`.
+Do not create branches. Work, commit and push directly on `main`. The `origin` remote is the maintainer's private CI server. CI and releases run there, see `docs/ci.md`.
 
 ## Mobile development builds
 
-Run Xcode/iOS and simulator builds on the build Mac over SSH, not on this Air. Clean up afterwards: stop simulators and background build processes, and delete temporary checkouts and DerivedData you created on the Studio.
+Run Xcode/iOS and simulator builds on the Mac build machine over SSH, not on the laptop. Clean up afterwards: stop simulators and background build processes, and delete temporary checkouts and DerivedData you created on that Mac.
 
-CI iOS jobs run on the build Mac (`build-mac` / `build-mac` on private network, 203.0.113.10): a host-mode `ci-server-runner` with the `ios` label, registered against the ci-server instance on the CI server. Manual builds also go over SSH to the Studio. Linux iOS builds (xtool) were evaluated and are not viable; do not plan around them.
+CI iOS jobs run on the Mac build machine: a host-mode runner with the `ios` label. Manual builds also go over SSH to that Mac. Linux iOS builds (xtool) were evaluated and are not viable; do not plan around them.
+
+Private values (host names, addresses, tailnet names, account IDs, key file names and logins) are in the maintainer's private notes. Run `infra show` on the maintainer's own machine to read them. Never write them into tracked files, commit messages, pull requests or CI output. Never skip the git hooks with `--no-verify`.
 
 ## Finishing work
 

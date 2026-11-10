@@ -1,19 +1,13 @@
-# CI: building WinBrowse with ci-server on the CI server
+# CI: building WinBrowse
 
-WinBrowse builds on the self-hosted ci-server instance on the CI server, reached over
-private network. The iOS job runs on a host-mode Mac `ci-server-runner`
-(Xcode 27.2 + xcodegen 2.46); see WinMusic's `docs/ci.md` for the runner setup
-and troubleshooting. There is no GitHub CI.
+WinBrowse builds on a self-hosted CI server, reached over a private network. The iOS job runs on a Mac runner in host mode, with Xcode and xcodegen installed on that Mac. Host names, addresses and login details are kept in the maintainer's private notes, not in this repository.
 
 | | |
 |---|---|
-| ci-server | https://ci.example |
-| Repository | `ci-user/winbrowse` — `https://ci.example/ci-user/winbrowse.git` |
 | Workflow | `.forgejo/workflows/ios.yml` |
 | Runner label | `ios` (host mode, Xcode 27.2 + xcodegen on the Mac runner) |
 
-The ci-server host is stable. The Mac runner is the build Mac (`build-mac`), which
-also handles manual builds over SSH.
+There is no GitHub CI. The Mac runner also handles manual builds over SSH.
 
 ## Pipeline
 
@@ -45,15 +39,16 @@ version is pushed, SideStore will not offer it as an update.
 git tag v1.0.1 && git push origin v1.0.1
 ```
 
-Needs the repo Actions secret `CLOUDFLARE_API_TOKEN` (Settings → Actions → Secrets). It holds the user-owned
-Cloudflare token `ci-api-token`, scoped to Workers Scripts Read + Write on the example-account account
-`00000000000000000000000000000000`; the Worker here is `winbrowse`. Without it `build` still passes and only
-`publish` fails, with an explicit message. `v1.0.1` was the first release published this way.
+The `publish` job needs these repository secrets on the CI server (Settings → Actions → Secrets):
 
-Local fallback (run on the Studio): `scripts/publish.sh` (refreshes extensions, builds, deploys).
+- `CLOUDFLARE_API_TOKEN`: an API token with Workers Scripts read and write on the Cloudflare account.
+- `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account ID.
+- `SITE_URL`: the public address of the SideStore source, without a trailing slash.
+
+Without them `build` still passes. `publish` fails with a message that names the missing secret.
+
+Local fallback, run on a Mac: `scripts/publish.sh` (refreshes extensions, builds, deploys). Put `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and `SITE_URL` in `~/.config/winbrowse/env`, one `NAME=value` per line. The script reads that file when it exists.
 
 ## Repository access
 
-SSH goes through the `ci-server` alias in `~/ssh-keys/config` (CI server, port 2222, key
-`~/ssh-keys/ci_key`). Registration is disabled and the repo is private;
-the web UI needs the `ci-user` login.
+The repository is private on the CI server. Clone it over SSH with a key that your account has been given. The host and login are in the maintainer's private notes.

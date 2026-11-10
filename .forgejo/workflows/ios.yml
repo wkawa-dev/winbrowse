@@ -61,7 +61,7 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
             "build/release/Build/Products/Release-iphoneos/WinBrowse.app/Info.plist"
 
-      # v4 refuses to run against ci-server (it reports itself as GHES); v3 is the supported line.
+      # v4 refuses to run on this CI server; v3 is the supported line.
       - uses: actions/upload-artifact@v3
         with:
           name: winbrowse-ipa
@@ -84,8 +84,12 @@ jobs:
       - name: Publish
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SITE_URL: ${{ secrets.SITE_URL }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN secret is not set"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID secret is not set"; exit 1; }
+          test -n "$SITE_URL" || { echo "SITE_URL secret is not set"; exit 1; }
           IPA=$(ls dist/*.ipa | head -1)
           echo "Publishing $IPA"
           IPA="$IPA" scripts/publish.sh

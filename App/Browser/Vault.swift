@@ -3,23 +3,16 @@ import Security
 import UIKit
 import WebKit
 
-/// Keeps a copy of cookies, settings, tabs, history and extension storage in the keychain, which iOS keeps when the
-/// app is deleted. A fresh install (empty container) restores from it before anything else reads its state.
-/// Site localStorage/IndexedDB live in WebKit's private files and aren't covered.
 @MainActor
 enum Vault {
     private static let service = "dev.winbrowse.vault"
     private static let account = "state"
     private static let seenKey = "vault.seen"
-    /// Above this the snapshot drops tab back-forward state and history, keeping logins and settings.
     private static let softLimit = 2_000_000
 
     private static var support: URL { FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0] }
     private static var pendingCookies: [[String: Any]] = []
 
-    // MARK: - Restore
-
-    /// Call before any singleton reads UserDefaults or Application Support. Cookies wait for `restoreCookies()`.
     static func restoreFilesIfFreshInstall() {
         let defaults = UserDefaults.standard
         guard defaults.object(forKey: seenKey) == nil else { return }
@@ -48,12 +41,9 @@ enum Vault {
         for c in cookies { await store.setCookie(c) }
     }
 
-    // MARK: - Snapshot
-
-    /// Saves the current state. Run when the app goes to the background; holds a background task until written.
     static func snapshot() {
-        var task = UIBackgroundTaskIdentifier.invalid
-        task = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(task) }
+        let background = BackgroundTask()
+        background.begin()
         Task {
             let now = Date()
             let cookies = await WKWebsiteDataStore.default().httpCookieStore.allCookies()
@@ -71,7 +61,7 @@ enum Vault {
                 blob = encode(cookies: cookies, defaults: defaults, files: files)
             }
             if let blob { write(blob) }
-            UIApplication.shared.endBackgroundTask(task)
+            background.end()
         }
     }
 
@@ -87,7 +77,6 @@ enum Vault {
         return out
     }
 
-    /// tabs.json without each tab's back-forward blob, so it stays small.
     private static func strippedTabState(_ d: Data) -> Data {
         guard var j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any], let tabs = j["tabs"] as? [[String: Any]] else { return d }
         j["tabs"] = tabs.map { var t = $0; t["state"] = nil; return t }
@@ -99,8 +88,6 @@ enum Vault {
         guard let raw = try? PropertyListSerialization.data(fromPropertyList: snap, format: .binary, options: 0) else { return nil }
         return try? (raw as NSData).compressed(using: .lzfse) as Data
     }
-
-    // MARK: - Keychain
 
     private static var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account]
@@ -115,9 +102,24 @@ enum Vault {
     }
 
     private static func write(_ data: Data) {
-        let attrs: [String: Any] = [kSecValueData as String: data, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock]
+        let attrs: [String: Any] = [kSecValueData as String: data, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
         if SecItemUpdate(query as CFDictionary, attrs as CFDictionary) == errSecItemNotFound {
             SecItemAdd(query.merging(attrs) { $1 } as CFDictionary, nil)
         }
+    }
+}
+
+@MainActor
+private final class BackgroundTask {
+    private var id = UIBackgroundTaskIdentifier.invalid
+
+    func begin() {
+        id = UIApplication.shared.beginBackgroundTask { [weak self] in self?.end() }
+    }
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
     }
 }

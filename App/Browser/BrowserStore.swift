@@ -26,8 +26,6 @@ final class BrowserStore: ObservableObject {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("tabs.json")
     }
 
-    // MARK: - Tabs
-
     @discardableResult
     func newTab(url: URL?, activate: Bool = true, opener: Tab? = nil) -> Tab {
         let t = Tab(id: nextId, url: url, store: self)
@@ -64,8 +62,6 @@ final class BrowserStore: ObservableObject {
         newTab(url: nil)
     }
 
-    /// Keep at most a handful of live web views; colder tabs keep their history state and reload when shown.
-    /// Background tabs kept live, scaled to the device: ~3 per GB of RAM (36 on a 12 GB iPad), never fewer than 6.
     nonisolated static let liveTabLimit = max(6, Int(ProcessInfo.processInfo.physicalMemory / 1_000_000_000) * 3)
     private var memoryObserver: NSObjectProtocol?
 
@@ -74,14 +70,11 @@ final class BrowserStore: ObservableObject {
         for t in live.dropFirst(limit) where !(t.webView.map(BackgroundMedia.shared.isPlaying) ?? false) { t.discard() }
     }
 
-    /// Drop every live web view (except ones playing media) so it is rebuilt with the current configuration,
-    /// keeping history and scroll state. Used when a setting that only applies at web view creation changes.
     func recycleWebViews() {
         for t in tabs where t.hasWebView && !(t.webView.map(BackgroundMedia.shared.isPlaying) ?? false) { t.discard() }
         objectWillChange.send()
     }
 
-    /// Only a real memory warning from iOS sheds tabs, and then just the least recently used half.
     func observeMemoryWarnings() {
         guard memoryObserver == nil else { return }
         memoryObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main) { [weak self] _ in
@@ -109,8 +102,6 @@ final class BrowserStore: ObservableObject {
         if looksLikeHost, let u = URL(string: "https://" + s), u.host?.contains(".") == true || u.host == "localhost" { return u }
         return SearchEngine.current.url(for: s)
     }
-
-    // MARK: - Persistence
 
     struct Saved: Codable { var tabs: [SavedTab]; var active: Int? }
     struct SavedTab: Codable { var url: String?; var title: String; var state: Data?; var desktop: Bool? }
@@ -148,8 +139,6 @@ final class BrowserStore: ObservableObject {
     }
 }
 
-// MARK: - Extension runtime bridge
-
 extension BrowserStore: ExtensionTabProvider {
     var extTabs: [ExtTabInfo] {
         tabs.enumerated().map { i, t in
@@ -160,7 +149,6 @@ extension BrowserStore: ExtensionTabProvider {
     func extWebView(tabId: Int) -> WKWebView? { tabs.first { $0.id == tabId }?.webView }
     func extTabId(for webView: WKWebView) -> Int? { tabs.first { $0.webView === webView }?.id }
     func extCreateTab(url: URL, active: Bool) -> Int {
-        // Welcome pages extensions open on first install go behind the start page.
         let quiet = Date().timeIntervalSince(launchedAt) < 15
         return newTab(url: url, activate: active && !quiet).id
     }
@@ -173,130 +161,5 @@ extension BrowserStore: ExtensionTabProvider {
     func extReloadTab(tabId: Int) { tabs.first { $0.id == tabId }?.webView?.reload() }
     func extPresent(ext: WebExtension, page: String) {
         presentedExtensionPage = ExtensionPageRequest(ext: ext, page: page, tabId: activeId ?? -1)
-    }
-}
-
-// MARK: - Search
-
-enum SearchEngine: String, CaseIterable, Identifiable {
-    case google, duckduckgo, bing, startpage, brave
-    var id: String { rawValue }
-    var name: String {
-        switch self {
-        case .google: return "Google"
-        case .duckduckgo: return "DuckDuckGo"
-        case .bing: return "Bing"
-        case .startpage: return "Startpage"
-        case .brave: return "Brave Search"
-        }
-    }
-    static var current: SearchEngine {
-        get { SearchEngine(rawValue: UserDefaults.standard.string(forKey: "search.engine") ?? "") ?? .google }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "search.engine") }
-    }
-    func url(for q: String) -> URL? {
-        var c: URLComponents
-        switch self {
-        case .google: c = URLComponents(string: "https://www.google.com/search")!
-        case .duckduckgo: c = URLComponents(string: "https://duckduckgo.com/")!
-        case .bing: c = URLComponents(string: "https://www.bing.com/search")!
-        case .startpage: c = URLComponents(string: "https://www.startpage.com/do/search")!
-        case .brave: c = URLComponents(string: "https://search.brave.com/search")!
-        }
-        c.queryItems = [URLQueryItem(name: "q", value: q)]
-        return c.url
-    }
-}
-
-// MARK: - History
-
-@MainActor
-final class BrowserHistory: ObservableObject {
-    static let shared = BrowserHistory()
-    struct Entry: Codable, Identifiable, Hashable { var url: String; var title: String; var date: Date; var visits: Int; var id: String { url } }
-    @Published private(set) var entries: [Entry] = []
-    private var saveScheduled = false
-    private static var fileURL: URL { FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("history.json") }
-
-    init() {
-        if let d = try? Data(contentsOf: Self.fileURL), let e = try? JSONDecoder().decode([Entry].self, from: d) { entries = e }
-    }
-
-    func record(_ u: URL, title: String) {
-        let s = u.absoluteString
-        if let i = entries.firstIndex(where: { $0.url == s }) {
-            var e = entries.remove(at: i)
-            e.date = Date(); e.visits += 1
-            if !title.isEmpty { e.title = title }
-            entries.insert(e, at: 0)
-        } else {
-            entries.insert(Entry(url: s, title: title, date: Date(), visits: 1), at: 0)
-        }
-        if entries.count > 3_000 { entries.removeLast(entries.count - 3_000) }
-        save()
-    }
-
-    func suggestions(for q: String, limit: Int = 6) -> [Entry] {
-        let q = q.lowercased()
-        guard !q.isEmpty else { return [] }
-        return Array(entries.lazy.filter { $0.url.lowercased().contains(q) || $0.title.lowercased().contains(q) }
-            .sorted { ($0.visits, $0.date) > ($1.visits, $1.date) }.prefix(limit))
-    }
-
-    func remove(_ e: Entry) { entries.removeAll { $0.url == e.url }; save() }
-    func clear() { entries.removeAll(); save() }
-
-    private func save() {
-        guard !saveScheduled else { return }
-        saveScheduled = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            guard let self else { return }
-            self.saveScheduled = false
-            if let d = try? JSONEncoder().encode(self.entries) { try? d.write(to: Self.fileURL, options: .atomic) }
-        }
-    }
-}
-
-// MARK: - Downloads
-
-final class DownloadManager: NSObject, WKDownloadDelegate {
-    static let shared = DownloadManager()
-    private var destinations: [ObjectIdentifier: URL] = [:]
-
-    func download(_ download: WKDownload, decideDestinationUsing response: URLResponse, suggestedFilename: String,
-                  completionHandler: @escaping (URL?) -> Void) {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Downloads", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        var dest = dir.appendingPathComponent(suggestedFilename)
-        var n = 1
-        while FileManager.default.fileExists(atPath: dest.path) {
-            let base = (suggestedFilename as NSString).deletingPathExtension, ext = (suggestedFilename as NSString).pathExtension
-            dest = dir.appendingPathComponent("\(base) (\(n))" + (ext.isEmpty ? "" : ".\(ext)")); n += 1
-        }
-        destinations[ObjectIdentifier(download)] = dest
-        completionHandler(dest)
-    }
-
-    func downloadDidFinish(_ download: WKDownload) {
-        guard let dest = destinations.removeValue(forKey: ObjectIdentifier(download)) else { return }
-        Task { @MainActor in Toasts.shared.show("downloaded \(dest.lastPathComponent) — in Files › WinBrowse") }
-    }
-
-    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
-        destinations[ObjectIdentifier(download)] = nil
-        Task { @MainActor in Toasts.shared.show("download failed") }
-    }
-}
-
-@MainActor
-final class Toasts: ObservableObject {
-    static let shared = Toasts()
-    @Published var message: String?
-    func show(_ s: String) {
-        withAnimation(.easeOut(duration: 0.2)) { message = s }
-        Task {
-            try? await Task.sleep(nanoseconds: 2_400_000_000)
-            if message == s { withAnimation(.easeOut(duration: 0.2)) { message = nil } }
-        }
     }
 }

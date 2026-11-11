@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// New-tab page: intentionally blank.
 struct StartPage: View {
     @EnvironmentObject var theme: Theme
 

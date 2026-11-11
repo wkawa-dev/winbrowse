@@ -1,18 +1,14 @@
-// WinBrowse WebExtension runtime: a chrome.* implementation backed by the native host.
-// Evaluated once per JS world (an extension's content world, or an extension page / background page).
-// The host calls __winextInstall(config) right after this file; config = {id, ctx, manifest, messages, uiLang, tabId}.
 (function () {
   if (globalThis.__winextInstall) return;
 
   globalThis.__winextInstall = function (cfg) {
     if (globalThis.__winext) return;
     const EXT = cfg.id;
-    const CTX = cfg.ctx;            // 'content' | 'background' | 'page'
+    const CTX = cfg.ctx;
     const BASE = 'winext://' + EXT + '/';
     const handler = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.winext;
     const FRAME = CTX !== 'content' || window === window.top ? 0 : Math.floor(Math.random() * 2147483646) + 1;
 
-    // ---- bridge ---------------------------------------------------------------------------------
     async function call(type, data) {
       if (!handler) throw new Error('Extension context invalidated.');
       const reply = await handler.postMessage({ type, ext: EXT, frame: FRAME, data: JSON.stringify(data === undefined ? null : data) });
@@ -23,7 +19,6 @@
     }
     function fireAndForget(type, data) { call(type, data).catch(() => {}); }
 
-    // ---- helpers --------------------------------------------------------------------------------
     let lastErrorValue;
     function withCallback(promise, cb) {
       if (typeof cb !== 'function') return promise;
@@ -55,7 +50,6 @@
     const noopEvent = () => new WEvent();
     const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 
-    // ---- i18n -----------------------------------------------------------------------------------
     const messages = cfg.messages || {};
     function getMessage(name, subs) {
       if (name == null) return '';
@@ -77,7 +71,6 @@
       return text;
     }
 
-    // ---- storage --------------------------------------------------------------------------------
     const storageOnChanged = new WEvent();
     function makeArea(area) {
       const ev = new WEvent();
@@ -110,7 +103,6 @@
     }
     const storage = { local: makeArea('local'), sync: makeArea('sync'), session: makeArea('session'), managed: makeArea('managed'), onChanged: storageOnChanged };
 
-    // ---- messaging ------------------------------------------------------------------------------
     const onMessage = new WEvent();
     const onConnect = new WEvent();
     const ports = new Map();
@@ -132,7 +124,6 @@
     }
 
     function parseSendArgs(args) {
-      // sendMessage([extensionId], message, [options])
       if (args.length >= 3) return args[1];
       if (args.length === 2) {
         if (typeof args[0] === 'string' && args[0] === EXT) return args[1];
@@ -172,7 +163,6 @@
       return port;
     }
 
-    // ---- runtime --------------------------------------------------------------------------------
     const manifest = cfg.manifest || {};
     const runtime = {
       id: EXT,
@@ -204,7 +194,6 @@
       sendNativeMessage: api(async () => { throw new Error('Native messaging is not supported.'); }),
     };
 
-    // ---- tabs / windows -------------------------------------------------------------------------
     const tabs = {
       TAB_ID_NONE: -1,
       query: api(async (q) => (await call('tabs.query', q || {})) || []),
@@ -249,7 +238,6 @@
       onFocusChanged: noopEvent(), onCreated: noopEvent(), onRemoved: noopEvent(),
     };
 
-    // ---- scripting ------------------------------------------------------------------------------
     const scripting = {
       executeScript: api(async (d) => {
         const target = d.target || {};
@@ -265,7 +253,6 @@
       ExecutionWorld: { ISOLATED: 'ISOLATED', MAIN: 'MAIN' },
     };
 
-    // ---- alarms ---------------------------------------------------------------------------------
     const alarmTimers = new Map();
     const onAlarm = new WEvent();
     const alarms = {
@@ -286,7 +273,6 @@
       onAlarm,
     };
 
-    // ---- the rest -------------------------------------------------------------------------------
     const actionApi = {
       setBadgeText: api(async () => {}), getBadgeText: api(async () => ''), setBadgeBackgroundColor: api(async () => {}),
       setBadgeTextColor: api(async () => {}), setIcon: api(async () => {}), setTitle: api(async () => {}), getTitle: api(async () => ''),
@@ -320,13 +306,11 @@
       declarativeNetRequest: { getDynamicRules: api(async () => []), updateDynamicRules: api(async () => {}), getSessionRules: api(async () => []), updateSessionRules: api(async () => {}), getEnabledRulesets: api(async () => []), updateEnabledRulesets: api(async () => {}) },
     };
     if (CTX === 'content') {
-      // Content scripts only see a subset, like Chrome.
       for (const k of ['tabs', 'windows', 'scripting', 'alarms', 'action', 'browserAction', 'pageAction', 'commands', 'contextMenus', 'webNavigation', 'notifications', 'idle', 'declarativeNetRequest']) delete chromeObj[k];
       chromeObj.permissions = permissions;
     }
     Object.defineProperty(globalThis, 'chrome', { value: chromeObj, writable: true, configurable: true });
 
-    // ---- extension pages: route cross-origin fetches through the host (extensions aren't bound by CORS) ----
     if (CTX !== 'content') {
       const pageFetch = globalThis.fetch.bind(globalThis);
       const toB64 = (buf) => { let s = ''; const b = new Uint8Array(buf); for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); };
@@ -367,7 +351,6 @@
         return response;
       };
       if (!globalThis.crypto || !globalThis.crypto.subtle) {
-        // Non-secure custom-scheme origins don't get SubtleCrypto; provide digest() through the host.
         const subtle = {
           async digest(alg, data) {
             const name = (typeof alg === 'string' ? alg : alg.name).toUpperCase();
@@ -380,7 +363,6 @@
         try { Object.defineProperty(globalThis.crypto, 'subtle', { value: subtle, configurable: true }); } catch (e) {}
       }
       if (CTX === 'background') {
-        // Service-worker globals the background scripts expect.
         globalThis.importScripts = function (...urls) {
           for (const u of urls) {
             const x = new XMLHttpRequest();
@@ -394,7 +376,6 @@
       }
     }
 
-    // ---- inbound from the host ------------------------------------------------------------------
     globalThis.__winext = {
       receive(kind, payloadJSON) {
         const p = JSON.parse(payloadJSON || 'null');
@@ -424,7 +405,6 @@
             return 'ok';
           }
           case 'event': {
-            // e.g. {path: 'runtime.onInstalled', args: [{reason: 'install'}]}
             let o = chromeObj;
             for (const seg of p.path.split('.')) o = o && o[seg];
             if (o && o._fire) o._fire(...(p.args || []));

@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Rectangular outlined Metro button; `filled` uses the accent like a primary action.
 struct MetroButton: View {
     @EnvironmentObject var theme: Theme
     let title: String
@@ -24,7 +23,6 @@ struct MetroButton: View {
     }
 }
 
-/// The Windows Phone indeterminate progress: dots sliding across.
 struct MetroDots: View {
     @EnvironmentObject var theme: Theme
     var color: Color?
@@ -36,7 +34,6 @@ struct MetroDots: View {
                 ForEach(0..<5, id: \.self) { i in
                     let p = (t / 2.2 + Double(i) * -0.07).truncatingRemainder(dividingBy: 1)
                     let p2 = p < 0 ? p + 1 : p
-                    // Fast in, crawl through the middle, fast out.
                     let eased = p2 < 0.35 ? p2 / 0.35 * 0.4 : (p2 < 0.65 ? 0.4 + (p2 - 0.35) / 0.3 * 0.2 : 0.6 + (p2 - 0.65) / 0.35 * 0.4)
                     Rectangle().fill(color ?? theme.accent).frame(width: 4, height: 4)
                         .position(x: eased * g.size.width, y: g.size.height / 2)
@@ -47,7 +44,6 @@ struct MetroDots: View {
     }
 }
 
-/// Windows Phone style on/off switch.
 struct MetroToggle: View {
     @EnvironmentObject var theme: Theme
     let title: String
@@ -75,7 +71,6 @@ struct MetroToggle: View {
     }
 }
 
-/// Section header in the accent colour, settings-page style.
 struct MetroGroup<C: View>: View {
     @EnvironmentObject var theme: Theme
     let title: String
@@ -102,7 +97,6 @@ struct MetroRow: View {
     }
 }
 
-/// Big lowercase list item, the Windows Phone menu look.
 struct MetroMenuItem: View {
     @EnvironmentObject var theme: Theme
     let title: String
@@ -124,19 +118,13 @@ struct MetroMenuItem: View {
     }
 }
 
-/// Motion timings, Windows 10 Mobile style: quick off the mark, then decelerating.
 enum Metro {
-    /// The context menu peeling open off the edge of the screen.
     static let menuOpen = Animation.timingCurve(0.12, 0.86, 0.2, 1, duration: 0.34)
-    /// ...and folding back down.
     static let menuClose = Animation.timingCurve(0.45, 0, 0.75, 1, duration: 0.2)
 }
 
-/// The screen edge the Metro context menu hangs from.
 enum MenuHinge { case bottom, top }
 
-/// The Windows 10 Mobile context menu: a rectangle with one corner sliced off at 45°,
-/// the way the phone's app-bar menu peels away from the edge of the screen.
 struct Chamfer: Shape {
     enum Corner { case topLeading, topTrailing, bottomLeading, bottomTrailing }
     var corner: Corner = .topTrailing
@@ -176,10 +164,7 @@ struct Chamfer: Shape {
     }
 }
 
-/// The Metro peel: the menu is hinged to one edge of the screen and swings open
-/// off it, tipping back in 3D as it comes, instead of popping into place.
 struct PeelModifier: ViewModifier {
-    /// 0 = closed, 1 = open.
     let progress: Double
     let hinge: MenuHinge
 
@@ -196,7 +181,6 @@ struct PeelModifier: ViewModifier {
 }
 
 extension AnyTransition {
-    /// The Windows 10 Mobile context menu peeling open off its screen edge.
     static func metroPeel(_ hinge: MenuHinge) -> AnyTransition {
         .asymmetric(
             insertion: .modifier(active: PeelModifier(progress: 0, hinge: hinge), identity: PeelModifier(progress: 1, hinge: hinge)),
@@ -206,7 +190,6 @@ extension AnyTransition {
 }
 
 extension View {
-    /// The Metro reveal: an item rises into place once the menu has peeled open.
     func rise(_ shown: Bool, delay: Double = 0) -> some View {
         self
             .opacity(shown ? 1 : 0)
@@ -215,7 +198,6 @@ extension View {
     }
 }
 
-/// Toast in the Windows Phone notification style (top banner).
 struct ToastView: View {
     @EnvironmentObject var theme: Theme
     let text: String

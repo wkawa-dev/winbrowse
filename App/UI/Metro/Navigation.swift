@@ -9,7 +9,6 @@ enum Route: Hashable {
     case passkeys
 }
 
-/// Pages pushed over the browser, with the Metro turnstile transition.
 @MainActor
 final class Router: ObservableObject {
     static let shared = Router()
@@ -17,7 +16,6 @@ final class Router: ObservableObject {
     @Published var forward = true
     @Published var menuOpen = false
 
-    /// The "…" menu: it peels open off the screen edge, never pops.
     func toggleMenu() {
         if menuOpen { closeMenu() } else { openMenu() }
     }
@@ -52,7 +50,6 @@ final class Router: ObservableObject {
     }
 }
 
-/// Standard page frame: small uppercase app title, big lowercase header, content.
 struct MetroPage<Content: View>: View {
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var router: Router

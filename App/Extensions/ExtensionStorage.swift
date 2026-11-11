@@ -1,9 +1,8 @@
 import Foundation
 
-/// chrome.storage backing store: one JSON file per extension + area (session is memory only).
 @MainActor
 final class ExtensionStorage {
-    private var data: [String: [String: Any]] = [:] // "<ext>/<area>" → items
+    private var data: [String: [String: Any]] = [:]
     private var dirty: Set<String> = []
     private var saveScheduled = false
 
@@ -35,7 +34,6 @@ final class ExtensionStorage {
         return out
     }
 
-    /// Returns chrome.storage.onChanged-shaped changes.
     func set(_ ext: String, _ area: String, _ new: [String: Any]) -> [String: Any] {
         var all = items(ext, area)
         var changes: [String: Any] = [:]

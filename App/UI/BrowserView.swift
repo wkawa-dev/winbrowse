@@ -44,7 +44,6 @@ private struct TabContent: View {
     }
 }
 
-/// The Edge (Windows 10 Mobile) address bar: bottom on iPhone, top on iPad.
 struct AddressBar: View {
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var store: BrowserStore
@@ -185,8 +184,6 @@ struct AddressBar: View {
     }
 }
 
-/// UIKit text field behind the address bar. Focusing it selects the whole URL (so typing or paste replaces it),
-/// and a toolbar above the keyboard offers cut and paste.
 struct AddressField: UIViewRepresentable {
     @Binding var text: String
     @Binding var focused: Bool
@@ -224,7 +221,6 @@ struct AddressField: UIViewRepresentable {
         context.coordinator.cut?.tintColor = tint
         if field.text != text { field.text = text }
         if focused && !field.isFirstResponder {
-            // Async: becoming first responder calls delegate methods that write the bindings, which must not happen mid-update.
             DispatchQueue.main.async { field.becomeFirstResponder() }
         } else if !focused && field.isFirstResponder {
             field.resignFirstResponder()
@@ -244,7 +240,6 @@ struct AddressField: UIViewRepresentable {
             super.init()
         }
 
-        /// Cut and paste buttons at the trailing edge of the field while editing.
         func actions(for field: UITextField) -> UIView {
             func button(_ symbol: String, _ label: String, _ id: String, _ action: @escaping () -> Void) -> UIButton {
                 let b = UIButton(type: .system, primaryAction: UIAction { _ in action() })
@@ -280,7 +275,6 @@ struct AddressField: UIViewRepresentable {
             field.text = url
             parent.text = url
             if !parent.focused { parent.focused = true }
-            // Async so the tap's own caret placement lands first; the selection then covers the whole URL.
             DispatchQueue.main.async { field.selectAll(nil) }
         }
 
@@ -299,7 +293,6 @@ struct AddressField: UIViewRepresentable {
     }
 }
 
-/// Toolbar shortcuts to the extensions (iPad) — SponsorBlock, X-Posed, uBO.
 struct ExtensionButtons: View {
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var store: BrowserStore
@@ -352,7 +345,6 @@ struct UBOIcon: View {
     }
 }
 
-/// iPad tab strip, Edge style: flat tabs, accent underline on the active one.
 struct TabStrip: View {
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var store: BrowserStore
@@ -405,7 +397,6 @@ private struct TabChip: View {
 
 #if DEBUG
 extension View {
-    /// Lets the debug server focus the address bar (`/focus`).
     func debugFocus(_ focused: Binding<Bool>) -> some View {
         onReceive(NotificationCenter.default.publisher(for: .init("debug.focusAddress"))) { _ in focused.wrappedValue = true }
     }

@@ -17,7 +17,6 @@ enum AppBoot {
     static func boot() {
         guard !booted, !hostedByTests else { return }
         booted = true
-        // After a reinstall, put the saved cookies back before any tab loads.
         Task {
             await Vault.restoreCookies()
             start()
@@ -33,15 +32,12 @@ enum AppBoot {
         BrowserStore.shared.observeMemoryWarnings()
         Task {
             await reloadBlocking()
-            // Pages loaded before the filters finished compiling get a fresh, filtered load.
             if let t = BrowserStore.shared.active, t.url != nil, ContentBlocker.shared.activeRuleCount > 0 { t.webView?.reload() }
         }
-        // Background pages after the window exists (they're parked in it to avoid timer throttling).
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { host.startBackgrounds() }
         #if DEBUG
         DebugServer.shared.start()
         #endif
-        // Grab the real UA for the extension fetch proxy.
         let probeConfiguration = WKWebViewConfiguration()
         probeConfiguration.applicationNameForUserAgent = WebViewFactory.safariSuffix
         let probe = WKWebView(frame: .zero, configuration: probeConfiguration)

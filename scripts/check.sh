@@ -16,6 +16,12 @@ need() { command -v "$1" >/dev/null || { echo "$1 is required: $2" >&2; exit 1; 
 need swiftformat "brew install swiftformat"
 need npm "brew install node"
 
+step "no code comments"
+if git grep -n -E '^\s*//' -- 'App/*.swift' 'App/Resources/*.js' 'Tests/*.swift' 'Tests/Fixtures/*.js'; then
+  echo "remove these comments: CLAUDE.md asks for code that explains itself" >&2
+  exit 1
+fi
+
 step "swiftformat"
 swiftformat --lint --quiet .
 

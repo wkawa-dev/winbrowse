@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Windows Phone / Windows 10 Mobile visual language: flat, black, typographic, one accent colour.
 @MainActor
 final class Theme: ObservableObject {
     static let shared = Theme()
@@ -45,7 +44,6 @@ enum MetroFont {
     static let appTitle = Font.system(size: 14, weight: .semibold)
 }
 
-/// The Metro "tilt" press effect: content tips away from the finger.
 struct TiltStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -60,7 +58,6 @@ extension ButtonStyle where Self == TiltStyle {
     static var tilt: TiltStyle { TiltStyle() }
 }
 
-/// Turnstile page transition (rotate about the leading edge).
 struct TurnstileModifier: ViewModifier {
     let angle: Double
     let opacity: Double
@@ -86,7 +83,6 @@ extension AnyTransition {
     }
 }
 
-/// Round outlined app-bar glyph button.
 struct RoundIcon: View {
     @EnvironmentObject var theme: Theme
     let system: String

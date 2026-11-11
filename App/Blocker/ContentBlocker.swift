@@ -13,7 +13,6 @@ final class ContentBlocker: ObservableObject {
         let defaultOn: Bool
         let networkRules: Int
         let cosmetic: Int
-        let lang: String?
     }
 
     @Published private(set) var rulesets: [Ruleset] = []
@@ -54,8 +53,7 @@ final class ContentBlocker: ObservableObject {
             let regionalDefault = r["group"] as? String == "regions" && langs.contains(lang)
             return Ruleset(id: id, name: r["name"] as? String ?? id, group: r["group"] as? String ?? "other",
                            defaultOn: (r["enabled"] as? Bool ?? false) || id == "adguard-mobile" || regionalDefault,
-                           networkRules: rules, cosmetic: (css?["generic"] as? Int ?? 0) + (css?["specific"] as? Int ?? 0),
-                           lang: r["lang"] as? String)
+                           networkRules: rules, cosmetic: (css?["generic"] as? Int ?? 0) + (css?["specific"] as? Int ?? 0))
         }
     }
 

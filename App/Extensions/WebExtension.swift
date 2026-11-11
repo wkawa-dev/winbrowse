@@ -29,7 +29,7 @@ struct WebExtension: Identifiable {
     var world: WKContentWorld { WKContentWorld.world(name: "winext.\(id)") }
     var baseURL: String { "winext://\(id)/" }
 
-    var name: String { localize(manifest["short_name"] as? String ?? manifest["name"] as? String ?? id, preferShort: true) }
+    var name: String { localize(manifest["short_name"] as? String ?? manifest["name"] as? String ?? id) }
     var fullName: String { localize(manifest["name"] as? String ?? id) }
     var summary: String { localize(manifest["description"] as? String ?? "") }
 
@@ -40,7 +40,7 @@ struct WebExtension: Identifiable {
         return dir.appendingPathComponent(p.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
     }
 
-    func localize(_ s: String, preferShort: Bool = false) -> String {
+    func localize(_ s: String) -> String {
         guard s.hasPrefix("__MSG_"), s.hasSuffix("__") else { return s }
         let key = String(s.dropFirst(6).dropLast(2))
         let m = (messages[key] ?? messages[key.lowercased()]) as? [String: Any]

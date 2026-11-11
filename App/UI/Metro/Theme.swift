@@ -41,7 +41,6 @@ extension Color {
 enum MetroFont {
     static func header(_ size: CGFloat = 52) -> Font { .system(size: size, weight: .light) }
     static func title(_ size: CGFloat = 26) -> Font { .system(size: size, weight: .light) }
-    static let body = Font.system(size: 17, weight: .regular)
     static let caption = Font.system(size: 13, weight: .regular)
     static let appTitle = Font.system(size: 14, weight: .semibold)
 }
@@ -115,43 +114,5 @@ struct RoundIcon: View {
         }
         .buttonStyle(.tilt)
         .accessibilityLabel(label ?? system)
-    }
-}
-
-/// Small rectangular badge (format / Atmos).
-struct Badge: View {
-    @EnvironmentObject var theme: Theme
-    let text: String
-    var accent = false
-    var body: some View {
-        Text(text)
-            .font(.system(size: 9, weight: .bold))
-            .padding(.horizontal, 4).padding(.vertical, 2)
-            .foregroundStyle(accent ? Color.white : theme.subtle)
-            .background(accent ? theme.accent : Color.clear)
-            .overlay(Rectangle().strokeBorder(accent ? Color.clear : theme.subtle.opacity(0.6), lineWidth: 1))
-    }
-}
-
-/// Button with tilt + long-press that doesn't also fire the tap when the finger lifts.
-struct PressableButton<Label: View>: View {
-    let action: () -> Void
-    var longPress: (() -> Void)?
-    @ViewBuilder var label: Label
-    @State private var suppress = false
-
-    var body: some View {
-        Button {
-            if suppress { suppress = false; return }
-            action()
-        } label: { label }
-            .buttonStyle(.tilt)
-            .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
-                guard let longPress else { return }
-                suppress = true
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                longPress()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { suppress = false }
-            })
     }
 }

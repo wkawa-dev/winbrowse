@@ -92,11 +92,10 @@ struct MetroRow: View {
     @EnvironmentObject var theme: Theme
     let title: String
     var value: String?
-    var accent = false
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(title).font(.system(size: 17)).foregroundStyle(theme.fg)
-            if let value { Text(value).font(MetroFont.caption).foregroundStyle(accent ? theme.accent : theme.subtle).lineLimit(3) }
+            if let value { Text(value).font(MetroFont.caption).foregroundStyle(theme.subtle).lineLimit(3) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
@@ -108,15 +107,12 @@ struct MetroMenuItem: View {
     @EnvironmentObject var theme: Theme
     let title: String
     var detail: String?
-    var icon: String?
-    var size: CGFloat = 21
     let action: () -> Void
     var body: some View {
         Button(action: action) {
             HStack(spacing: 14) {
-                if let icon { Image(systemName: icon).font(.system(size: size * 0.8, weight: .light)).foregroundStyle(theme.fg).frame(width: 26) }
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(title.lowercased()).font(.system(size: size)).foregroundStyle(theme.fg).lineLimit(1)
+                    Text(title.lowercased()).font(.system(size: 21)).foregroundStyle(theme.fg).lineLimit(1)
                     if let detail { Text(detail).font(MetroFont.caption).foregroundStyle(theme.subtle).lineLimit(1) }
                 }
                 Spacer(minLength: 0)

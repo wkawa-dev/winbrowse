@@ -58,7 +58,6 @@ struct MetroPage<Content: View>: View {
     @EnvironmentObject var router: Router
     var title: String
     var subtitle: String = "WINBROWSE"
-    var headerSize: CGFloat = 46
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -74,7 +73,7 @@ struct MetroPage<Content: View>: View {
             }
             .padding(.horizontal, 20).padding(.top, 8)
             Text(title.lowercased())
-                .font(MetroFont.header(headerSize))
+                .font(MetroFont.header(46))
                 .foregroundStyle(theme.fg)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

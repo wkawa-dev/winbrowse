@@ -10,7 +10,6 @@ struct MenuOverlay: View {
     @EnvironmentObject var store: BrowserStore
     @EnvironmentObject var router: Router
     @ObservedObject var tab: Tab
-    @ObservedObject var pins = Pins.shared
     @Environment(\.horizontalSizeClass) private var hsc
     @State private var shown = false
 
@@ -36,10 +35,6 @@ struct MenuOverlay: View {
                     RoundIcon(system: "arrow.right", label: "forward", showLabel: true) { close(); tab.webView?.goForward() }
                         .opacity(tab.canGoForward ? 1 : 0.35)
                     RoundIcon(system: "square.and.arrow.up", label: "share", showLabel: true) { close(); share() }
-                    RoundIcon(system: pins.isPinned(tab.url) ? "pin.slash" : "pin", label: pins.isPinned(tab.url) ? "unpin" : "pin", showLabel: true) {
-                        if let u = tab.url { pins.toggle(u, title: tab.displayTitle) }
-                        close()
-                    }
                 }
                 Spacer(minLength: 0)
             }

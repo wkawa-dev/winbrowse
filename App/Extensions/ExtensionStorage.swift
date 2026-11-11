@@ -65,13 +65,6 @@ final class ExtensionStorage {
         remove(ext, area, keys: Array(items(ext, area).keys))
     }
 
-    func wipe(_ ext: String) {
-        for area in ["local", "sync", "session"] {
-            data[key(ext, area)] = [:]
-            try? FileManager.default.removeItem(at: fileURL(key(ext, area)))
-        }
-    }
-
     private func commit(_ ext: String, _ area: String, _ all: [String: Any]) {
         let k = key(ext, area)
         data[k] = all

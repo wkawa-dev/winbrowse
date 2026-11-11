@@ -4,7 +4,6 @@ import WebKit
 /// Hosts the active tab's WKWebView; swapping tabs swaps the subview so pages keep running.
 struct WebContainer: UIViewRepresentable {
     @ObservedObject var tab: Tab
-    var bottomInset: CGFloat = 0
 
     func makeUIView(context: Context) -> ContainerView { ContainerView() }
 

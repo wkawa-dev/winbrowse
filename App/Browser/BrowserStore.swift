@@ -257,35 +257,6 @@ final class BrowserHistory: ObservableObject {
     }
 }
 
-// MARK: - Start-page tiles
-
-@MainActor
-final class Pins: ObservableObject {
-    static let shared = Pins()
-    struct Pin: Codable, Identifiable, Hashable { var url: String; var title: String; var id: String { url } }
-    @Published var pins: [Pin] {
-        didSet { if let d = try? JSONEncoder().encode(pins) { UserDefaults.standard.set(d, forKey: "pins") } }
-    }
-    init() {
-        if let d = UserDefaults.standard.data(forKey: "pins"), let p = try? JSONDecoder().decode([Pin].self, from: d) { pins = p }
-        else {
-            pins = [
-                Pin(url: "https://www.youtube.com/", title: "YouTube"),
-                Pin(url: "https://x.com/home", title: "X"),
-                Pin(url: "https://www.reddit.com/", title: "Reddit"),
-                Pin(url: "https://en.m.wikipedia.org/", title: "Wikipedia"),
-                Pin(url: "https://github.com/", title: "GitHub"),
-                Pin(url: "https://news.ycombinator.com/", title: "Hacker News"),
-            ]
-        }
-    }
-    func toggle(_ url: URL, title: String) {
-        let s = url.absoluteString
-        if pins.contains(where: { $0.url == s }) { pins.removeAll { $0.url == s } } else { pins.append(Pin(url: s, title: title)) }
-    }
-    func isPinned(_ url: URL?) -> Bool { url.map { u in pins.contains { $0.url == u.absoluteString } } ?? false }
-}
-
 // MARK: - Downloads
 
 final class DownloadManager: NSObject, WKDownloadDelegate {

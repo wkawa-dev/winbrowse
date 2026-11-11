@@ -6,7 +6,7 @@ This runbook takes a broken site from a report to a tested fix. A person or a co
 
 1. Build and launch a Debug build in the simulator: `scripts/sim.sh` on the build Mac, or `scripts/mac.sh scripts/e2e.sh` for the whole loop. The Debug build opens a control port on `localhost:8899` and writes its token to `/tmp/winbrowse-debug-token`.
 2. Check the connection: `tools/webcompat/wb.py state`.
-3. If the user sent a breakage report (menu › report broken site), read it first. It lists the site's protections, the filter lists and their compile report, the extensions and the page errors.
+3. If the user sent a breakage report (menu › report broken site › Send report), read it first. It lists the site's protections, the filter lists and their compile report, the extensions and the page errors. Reports are rows in the D1 table `breakage_reports` of the `winbrowse-reports` database; `report` holds the JSON. Read them with `cf d1 raw <database id> --sql "SELECT received_at, site, report FROM breakage_reports ORDER BY received_at DESC LIMIT 20"`, where the database ID comes from `cf d1 list`.
 
 ## 1. Reproduce
 

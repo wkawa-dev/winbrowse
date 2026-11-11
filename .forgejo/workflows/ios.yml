@@ -76,9 +76,11 @@ jobs:
         env:
           WINBROWSE_VERSION: ${{ steps.version.outputs.version }}
           BUILD_NUMBER: ${{ github.run_number }}
+          SITE_URL: ${{ secrets.SITE_URL }}
         run: |
           rm -rf dist
           xcodegen generate
+          if [ -n "$SITE_URL" ]; then WB_REPORTS_URL="${SITE_URL%/}/api/reports"; export WB_REPORTS_URL; fi
           IPA=$(scripts/build-ipa.sh)
           echo "path=$IPA" >> "$GITHUB_OUTPUT"
           ls -lh "$IPA"

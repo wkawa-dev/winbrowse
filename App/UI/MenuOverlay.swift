@@ -73,7 +73,7 @@ struct MenuOverlay: View {
             tab.rebuildWebView(loading: tab.url)
         }))
         if tab.url?.scheme?.hasPrefix("http") == true {
-            out.append(("report broken site", "share a report with no personal data", { close(); BreakageReporter.share(for: tab) }))
+            out.append(("report broken site", "send a report without personal data", { close(); BreakageReporter.present(for: tab) }))
         }
         out.append(("extensions", nil, { close(); router.push(.extensions) }))
         out.append(("history", nil, { close(); router.push(.history) }))

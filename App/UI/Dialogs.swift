@@ -17,6 +17,14 @@ enum Dialogs {
         top.present(a, animated: true)
     }
 
+    static func choose(title: String, message: String, actions: [(String, () -> Void)]) {
+        let a = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        for (label, run) in actions { a.addAction(UIAlertAction(title: label, style: .default) { _ in run() }) }
+        a.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        guard let top else { return }
+        top.present(a, animated: true)
+    }
+
     static func confirm(title: String, message: String, completion: @escaping (Bool) -> Void) {
         let a = UIAlertController(title: title, message: message, preferredStyle: .alert)
         a.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completion(false) })

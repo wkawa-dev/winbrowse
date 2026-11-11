@@ -12,6 +12,8 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     TARGETED_DEVICE_FAMILY: "1,2"
     CODE_SIGN_STYLE: Automatic
+    WB_REPORTS_URL: ""
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
     ENABLE_USER_SCRIPT_SANDBOXING: NO
 targets:
   WinBrowse:
@@ -48,6 +50,7 @@ targets:
         CFBundleDisplayName: WinBrowse
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WBReportsURL: $(WB_REPORTS_URL)
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIBackgroundModes: [audio]

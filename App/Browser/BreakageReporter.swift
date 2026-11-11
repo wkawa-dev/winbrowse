@@ -3,6 +3,8 @@ import WebKit
 
 @MainActor
 enum BreakageReporter {
+    static let notice = "The report has the page address without its query, the protections and filter lists in use, extension IDs and versions, and recent page error messages. It has no cookies, passwords or page content."
+
     static func report(for tab: Tab) -> BreakageReport {
         let info = Bundle.main.infoDictionary ?? [:]
         let host = ExtensionHost.shared
@@ -22,8 +24,29 @@ enum BreakageReporter {
         )
     }
 
-    static func share(for tab: Tab) {
+    static func present(for tab: Tab) {
         let report = report(for: tab)
+        guard ReportUpload.endpoint != nil else { return share(report) }
+        Dialogs.choose(title: "Report broken site", message: notice, actions: [
+            ("Send report", { send(report) }),
+            ("Share file", { share(report) }),
+        ])
+    }
+
+    private static func send(_ report: BreakageReport) {
+        Task {
+            do {
+                try await ReportUpload.send(report)
+                Toasts.shared.show("Report sent. Thank you.")
+            } catch ReportUpload.Failure.tooLarge {
+                Toasts.shared.show("The report is too large to send. Share the file instead.")
+            } catch {
+                Toasts.shared.show("The report could not be sent. Share the file instead.")
+            }
+        }
+    }
+
+    private static func share(_ report: BreakageReport) {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(report.fileName)
         guard let data = try? report.json(), (try? data.write(to: file, options: .atomic)) != nil, let top = Dialogs.top else {
             Toasts.shared.show("couldn't create the report")

@@ -68,4 +68,4 @@ Pages that have played unmuted sound are told they stay visible and focused, so 
 
 ## Diagnostics
 
-Debug builds open a control port on `localhost:8899` (loopback only, per-run token); `/help` lists its routes. `tools/webcompat/wb.py` drives it to reproduce and bisect site breakage (`docs/triage.md`). Release builds offer "report broken site", which shares a redacted JSON report and sends nothing on its own.
+Debug builds open a control port on `localhost:8899` (loopback only, per-run token); `/help` lists its routes. `tools/webcompat/wb.py` drives it to reproduce and bisect site breakage (`docs/triage.md`). Release builds offer "report broken site". The report has personal data removed (`BreakageReport.redact`) and is shown to the user before anything leaves the device. Sending posts it to the `/api/reports` route of the Cloudflare Worker in `deploy/`, which stores it in the D1 table `breakage_reports`; the user can instead share the file. The app sends nothing else. The endpoint comes from the build setting `WB_REPORTS_URL`; an IPA built without it has no send option.

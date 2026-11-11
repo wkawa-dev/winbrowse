@@ -17,7 +17,7 @@ There is no GitHub CI. The Mac runner also handles manual builds over SSH.
 | tag `v*` | same | same | deploys to the Cloudflare Worker (SideStore source) |
 | manual dispatch | runs | runs | only if *publish* is ticked |
 
-`check` runs `scripts/check.sh`: the linters, then the Debug build and the test target on an iPhone simulator. `build` starts only when `check` passes. Run the same check by hand from any Mac with `scripts/mac.sh scripts/check.sh`, which copies the working tree to the build Mac, runs it there and cleans up. Set `WINBROWSE_SIM` to a simulator UDID to choose the simulator.
+`check` runs `scripts/check.sh`: the linters, the Node tests of the report intake in `deploy/test/`, then the Debug build and the test target on an iPhone simulator. `build` starts only when `check` passes. Run the same check by hand from any Mac with `scripts/mac.sh scripts/check.sh`, which copies the working tree to the build Mac, runs it there and cleans up. Set `WINBROWSE_SIM` to a simulator UDID to choose the simulator.
 
 Extensions are **not** refreshed in CI; the committed `App/Extensions-bundle` is what ships. Refresh locally with
 `scripts/update-extensions.sh` and commit (it re-applies `scripts/patch-xadblock.py`).
@@ -45,9 +45,9 @@ The `publish` job needs these repository secrets on the CI server (Settings → 
 
 - `CLOUDFLARE_API_TOKEN`: an API token with Workers Scripts read and write on the Cloudflare account.
 - `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account ID.
-- `SITE_URL`: the public address of the SideStore source, without a trailing slash.
+- `SITE_URL`: the public address of the SideStore source, without a trailing slash. The build job also uses it to set the broken-site report endpoint (`SITE_URL` + `/api/reports`) in the IPA; without it the IPA has no Send option.
 
-Without them `build` still passes. `publish` fails with a message that names the missing secret.
+Without `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID`, `build` still passes and `publish` fails with a message that names the missing secret. Without `SITE_URL`, `build` also passes, but the IPA has no report endpoint.
 
 Local fallback, run on a Mac: `scripts/publish.sh` (refreshes extensions, builds, deploys). Put `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and `SITE_URL` in `~/.config/winbrowse/env`, one `NAME=value` per line. The script reads that file when it exists.
 

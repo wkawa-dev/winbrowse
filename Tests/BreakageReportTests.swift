@@ -21,4 +21,38 @@ struct BreakageReportTests {
         #expect(json.contains("\"source\" : \"https://a.example/a.js\""))
         #expect(report.fileName == "winbrowse-report-a.example.json")
     }
+
+    @Test func reportsGoOnlyToAnHTTPSEndpoint() {
+        #expect(ReportUpload.endpoint(configured: nil) == nil)
+        #expect(ReportUpload.endpoint(configured: "") == nil)
+        #expect(ReportUpload.endpoint(configured: "http://reports.example/api/reports") == nil)
+        #expect(ReportUpload.endpoint(configured: "https://reports.example/api/reports")?.path == "/api/reports")
+    }
+
+    @Test func uploadsCompactJSONWithoutCookies() throws {
+        let endpoint = try #require(URL(string: "https://reports.example/api/reports"))
+        let request = try ReportUpload.request(for: sample(errors: []), to: endpoint)
+
+        #expect(request.httpMethod == "POST")
+        #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
+        #expect(request.httpShouldHandleCookies == false)
+        let body = try #require(request.httpBody.map { String(decoding: $0, as: UTF8.self) })
+        #expect(!body.contains("\n"))
+        #expect(body.contains("\"url\":\"https://shop.example/cart\""))
+    }
+
+    @Test func refusesReportsLargerThanTheServerAccepts() throws {
+        let endpoint = try #require(URL(string: "https://reports.example/api/reports"))
+        let page = PageError(kind: "error", message: String(repeating: "x", count: 500), page: "https://a.example/p", source: "https://a.example/a.js", line: 1, date: Date(timeIntervalSince1970: 0))
+        do {
+            _ = try ReportUpload.request(for: sample(errors: Array(repeating: page, count: 600)), to: endpoint)
+            Issue.record("a report over the limit was accepted")
+        } catch ReportUpload.Failure.tooLarge {}
+    }
+
+    private func sample(errors: [PageError]) -> BreakageReport {
+        BreakageReport(url: "https://shop.example/cart", appVersion: "1.0 (1)", system: "iOS 26.1", userAgent: "UA", desktopSite: false,
+                       protections: ["network"], rulesets: ["easylist"], filterListVersion: "1", extensions: [], compile: nil,
+                       errors: errors, created: Date(timeIntervalSince1970: 0))
+    }
 }

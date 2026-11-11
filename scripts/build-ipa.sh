@@ -18,6 +18,7 @@ mkdir -p build
 set +e
 xcodebuild -project WinBrowse.xcodeproj -scheme WinBrowse -configuration Release \
   -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$DD" \
+  "WB_REPORTS_URL=${WB_REPORTS_URL:-}" \
   CURRENT_PROJECT_VERSION="$BUILD" MARKETING_VERSION="$VERSION" \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
   build >"$LOG" 2>&1

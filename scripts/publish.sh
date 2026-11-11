@@ -15,7 +15,7 @@ SITE_URL="${SITE_URL%/}"
 # CI builds the IPA in an earlier job and passes it in (IPA=...); locally we refresh extensions and build it here.
 if [ -z "${IPA:-}" ]; then
   [ "${SKIP_EXT_UPDATE:-}" ] || scripts/update-extensions.sh   # newest SponsorBlock / X-Posed / uBO filter lists in every build
-  IPA=$(scripts/build-ipa.sh | tail -1)
+  IPA=$(WB_REPORTS_URL="$SITE_URL/api/reports" scripts/build-ipa.sh | tail -1)
 fi
 NAME=$(basename "$IPA" .ipa)
 VERSION=$(echo "$NAME" | sed -E 's/^winbrowse-(.*)-[0-9]+$/\1/')

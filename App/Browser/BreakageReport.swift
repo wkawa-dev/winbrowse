@@ -47,9 +47,9 @@ struct BreakageReport: Codable {
         errors.map { PageError(kind: $0.kind, message: $0.message, page: redact($0.page), source: redact($0.source), line: $0.line, date: $0.date) }
     }
 
-    func json() throws -> Data {
+    func json(pretty: Bool = true) throws -> Data {
         let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        encoder.outputFormatting = pretty ? [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes] : [.sortedKeys, .withoutEscapingSlashes]
         encoder.dateEncodingStrategy = .iso8601
         return try encoder.encode(self)
     }

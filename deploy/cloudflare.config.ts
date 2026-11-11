@@ -14,7 +14,8 @@ export default defineConfig({
     },
     env: {
       ASSETS: bindings.assets(),
-      REPORTS: bindings.d1({ name: "winbrowse-reports" })
+      REPORTS: bindings.d1({ name: "winbrowse-reports" }),
+      REPORT_LIMIT: bindings.rateLimit({ namespace: "1001", simple: { limit: 10, period: 60 } })
     }
   })
 });

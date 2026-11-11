@@ -4,6 +4,8 @@ export default {
   async fetch(request, env) {
     if (new URL(request.url).pathname !== "/api/reports") return env.ASSETS.fetch(request);
     if (request.method !== "POST") return reply(405, { error: "send a POST" }, { allow: "POST" });
+    const { success } = await env.REPORT_LIMIT.limit({ key: request.headers.get("cf-connecting-ip") ?? "unknown" });
+    if (!success) return reply(429, { error: "too many reports; wait a minute" }, { "retry-after": "60" });
     return submit(request, env);
   },
 };

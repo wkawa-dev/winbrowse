@@ -22,7 +22,7 @@ const report = () => ({
   token: "not stored",
 });
 
-function environment() {
+function environment({ allowed = true, keys = [] } = {}) {
   const db = new DatabaseSync(":memory:");
   db.exec(readFileSync(migration, "utf8"));
   const REPORTS = {
@@ -42,7 +42,13 @@ function environment() {
     },
   };
   const ASSETS = { fetch: async () => new Response("static file") };
-  return { db, env: { REPORTS, ASSETS } };
+  const REPORT_LIMIT = {
+    limit: async (options) => {
+      keys.push(options.key);
+      return { success: allowed };
+    },
+  };
+  return { db, keys, env: { REPORTS, ASSETS, REPORT_LIMIT } };
 }
 
 const post = (env, body, type = "application/json") =>
@@ -59,6 +65,19 @@ test("stores a valid report and answers 201 with its id", async () => {
   assert.equal(row.site, "shop.example");
   assert.equal(row.app_version, "1.0.1 (7)");
   assert.equal(row.report.includes("not stored"), false);
+});
+
+test("answers 429 to a client over its limit, before reading the body, and stores nothing", async () => {
+  const { db, keys, env } = environment({ allowed: false });
+  const response = await worker.fetch(new Request("https://winbrowse.example/api/reports", {
+    method: "POST",
+    headers: { "content-type": "application/json", "cf-connecting-ip": "192.0.2.7" },
+    body: JSON.stringify(report()),
+  }), env);
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("retry-after"), "60");
+  assert.deepEqual(keys, ["192.0.2.7"]);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM breakage_reports").get().n, 0);
 });
 
 test("refuses what the intake cannot store, and stores nothing", async () => {

@@ -2,6 +2,11 @@
 
 This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it.
 
+Do not add comments to the code. If a comment excuses a weak design, remove the comment and improve the code. Check your work before you say it is done.
+
+Keep implicit state machines to a minimum.
+Do not low value and low signal tests that waste time in CI.
+
 ## Git workflow
 
 Do not create branches. Work, commit and push directly on `main`. The `origin` remote is the maintainer's private CI server. CI and releases run there, see `docs/ci.md`.

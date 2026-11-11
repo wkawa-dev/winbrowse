@@ -34,6 +34,7 @@ final class WebViewFactory {
         let host = ExtensionHost.shared
         for (ucc, withUBO) in [(filtered, true), (unfiltered, false)] {
             ucc.removeAllUserScripts()
+            AppScripts.install(into: ucc, modules: appModules)
             BackgroundMedia.shared.install(into: ucc)
             Passkeys.shared.install(into: ucc)
             if withUBO, ContentBlocker.shared.enabled {
@@ -41,6 +42,13 @@ final class WebViewFactory {
             }
             host.install(into: ucc)
         }
+    }
+
+    private var appModules: AppScripts.Modules {
+        var m: AppScripts.Modules = [.passkeys]
+        if BackgroundMedia.shared.enabled { m.insert(.media) }
+        if ExtensionHost.shared.isEnabled("xadblock") { m.insert(.xfeed) }
+        return m
     }
 
     func applyRuleLists(_ lists: [WKContentRuleList]) {

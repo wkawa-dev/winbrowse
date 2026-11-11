@@ -1,0 +1,18 @@
+<!doctype html>
+<title>An audio element that can start one second of silent, unmuted sound</title>
+<audio id="player"></audio>
+<script>
+  window.startAudio = () => {
+    const rate = 8000;
+    const wav = new DataView(new ArrayBuffer(44 + rate));
+    const text = (at, s) => { for (let i = 0; i < s.length; i++) wav.setUint8(at + i, s.charCodeAt(i)); };
+    text(0, 'RIFF'); wav.setUint32(4, 36 + rate, true); text(8, 'WAVE'); text(12, 'fmt ');
+    wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true);
+    wav.setUint32(24, rate, true); wav.setUint32(28, rate, true); wav.setUint16(32, 1, true); wav.setUint16(34, 8, true);
+    text(36, 'data'); wav.setUint32(40, rate, true);
+    for (let i = 0; i < rate; i++) wav.setUint8(44 + i, 128);
+    const player = document.getElementById('player');
+    player.src = URL.createObjectURL(new Blob([wav.buffer], { type: 'audio/wav' }));
+    player.play().catch(() => {});
+  };
+</script>

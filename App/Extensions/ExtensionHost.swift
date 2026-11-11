@@ -218,20 +218,14 @@ final class ExtensionHost: NSObject {
         return out
     }
 
-    /// Small patches that keep older bundled extensions working against today's sites.
     private func compatScripts(for e: WebExtension) -> [WKUserScript] {
         guard e.id == "xadblock" else { return [] }
         let guardExpr = MatchPattern.jsGuard(["https://x.com/*", "https://*.x.com/*", "https://twitter.com/*", "https://*.twitter.com/*"])
-        let main = (Bundle.main.url(forResource: "compat-xadblock-main", withExtension: "js")).flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
-        // X no longer renders #react-root; the extension observes it, so hand it the app root instead (its own world only).
         let isolated = """
         if(\(guardExpr)){const g=Document.prototype.getElementById;Document.prototype.getElementById=function(id){const r=g.call(this,id);
         if(r||id!=='react-root')return r;return this.querySelector('[data-testid="primaryColumn"]')?.closest('body > div')||this.body}}
         """
-        return [
-            WKUserScript(source: "if(\(guardExpr)){\n\(main)\n}", injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page),
-            WKUserScript(source: isolated, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: e.world),
-        ]
+        return [WKUserScript(source: isolated, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: e.world)]
     }
 
     // MARK: - Extension pages (popup / options / background)
@@ -597,21 +591,4 @@ extension ExtensionHost: WKNavigationDelegate {
             webView.reload()
         }
     }
-}
-
-// MARK: - JSON helpers
-
-func jsonSafe(_ v: Any) -> Any {
-    if JSONSerialization.isValidJSONObject([v]) { return v }
-    return String(describing: v)
-}
-
-func jsonString(_ v: Any) -> String {
-    guard let d = try? JSONSerialization.data(withJSONObject: v, options: [.fragmentsAllowed]) else { return "null" }
-    return String(data: d, encoding: .utf8) ?? "null"
-}
-
-/// A JS string literal for arbitrary text (JSON escaping is valid JS; also guard U+2028/2029 and </script>).
-func jsString(_ s: String) -> String {
-    jsonString(s).replacingOccurrences(of: "\u{2028}", with: "\\u2028").replacingOccurrences(of: "\u{2029}", with: "\\u2029")
 }

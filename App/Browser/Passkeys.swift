@@ -4,22 +4,17 @@ import Security
 import UIKit
 import WebKit
 
-/// WinBrowse's own passkey authenticator (WebAuthn, ES256, "none" attestation).
-/// A sideloaded browser can't reach iCloud Keychain passkeys from a WKWebView (that needs Apple's web-browser
-/// entitlement), so passkeys are created and kept here: private keys in the keychain, every use gated by
-/// Face ID / Touch ID / passcode, origin and rpId checked natively against the requesting frame.
-/// Byte formats live in PasskeyCodec.swift; passkeys.js is the page-side half.
 @MainActor
 final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithReply {
     static let shared = Passkeys()
 
     struct Credential: Codable, Identifiable, Hashable {
-        var id: String // credential id, base64url
+        var id: String
         var rpId: String
-        var userHandle: String // base64url
+        var userHandle: String
         var userName: String
         var displayName: String
-        var key: Data // P-256 private key, raw representation
+        var key: Data
         var created: Date
         var lastUsed: Date?
     }
@@ -30,7 +25,6 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
     #endif
 
     private static let service = "dev.winbrowse.passkeys"
-    /// Prompts waiting on the user, keyed by "<origin>#<request id>". Keying by origin means a page can only cancel its own.
     private var cancelers: [String: () -> Void] = [:]
 
     override init() {
@@ -38,15 +32,10 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         credentials = Self.loadAll()
     }
 
-    static let script: String = Bundle.main.url(forResource: "passkeys", withExtension: "js").flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
-
     func install(into ucc: WKUserContentController) {
-        ucc.removeScriptMessageHandler(forName: "winpasskey", contentWorld: .page)
-        ucc.addScriptMessageHandler(self, contentWorld: .page, name: "winpasskey")
-        ucc.addUserScript(WKUserScript(source: Self.script, injectionTime: .atDocumentStart, forMainFrameOnly: false, in: .page))
+        ucc.removeScriptMessageHandler(forName: "winpasskey", contentWorld: AppScripts.world)
+        ucc.addScriptMessageHandler(self, contentWorld: AppScripts.world, name: "winpasskey")
     }
-
-    // MARK: - Bridge
 
     func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage,
                                replyHandler: @escaping (Any?, String?) -> Void) {
@@ -61,8 +50,6 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
             return replyHandler(Self.err("SecurityError", "Passkeys need a secure origin."), nil)
         }
         let host = origin.host.lowercased()
-        // Cross-origin iframes would need permissions-policy checks, so only the top page's exact origin
-        // (scheme, host and port) and its same-origin frames may use passkeys.
         if !message.frameInfo.isMainFrame {
             let topURL = message.webView?.url
             if topURL.map({ Self.originString($0) }) != originString {
@@ -70,6 +57,9 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
             }
         }
         let webView = message.webView
+        guard webView?.window != nil else {
+            return replyHandler(Self.err("NotAllowedError", "Passkeys are only available in the tab on screen."), nil)
+        }
 
         Task {
             let result: [String: Any]
@@ -85,7 +75,6 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
 
     private static func err(_ name: String, _ msg: String) -> [String: Any] { ["error": name, "message": msg] }
 
-    /// "scheme://host[:port]" with the scheme's default port left out, so URL and security-origin forms compare equal.
     static func originString(scheme: String, host: String, port: Int) -> String {
         let s = scheme.lowercased(), h = host.lowercased()
         let defaultPort = s == "https" ? 443 : 80
@@ -100,14 +89,11 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         originString(scheme: u.scheme ?? "", host: u.host ?? "", port: u.port ?? 0)
     }
 
-    /// The rpId must be the origin's host or a registrable parent of it.
     private static func validRP(_ rpId: String, host: String) -> Bool {
         let rp = rpId.lowercased()
         guard rp == host || host.hasSuffix("." + rp) else { return false }
         return rp.contains(".") || rp == "localhost"
     }
-
-    // MARK: - Registration
 
     private func create(_ b: [String: Any], host: String, origin: String, key requestKey: String) async -> [String: Any] {
         let rp = b["rp"] as? [String: Any] ?? [:]
@@ -143,7 +129,6 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         let authData = PasskeyCodec.registrationAuthData(rpId: rpId, credentialId: credId, publicKey: privateKey.publicKey)
         let cred = Credential(id: credId.b64u, rpId: rpId, userHandle: userHandle, userName: userName, displayName: displayName,
                               key: privateKey.rawRepresentation, created: Date(), lastUsed: nil)
-        // Registering the same account on the same site again replaces its passkey rather than adding a second one.
         let replaced = credentials.first { $0.rpId == rpId && $0.userHandle == userHandle }
         guard save(cred) else { return Self.err("UnknownError", "Couldn't save the passkey to the keychain.") }
         if let replaced { remove(replaced) }
@@ -159,8 +144,6 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         return out
     }
 
-    // MARK: - Sign-in
-
     private func get(_ b: [String: Any], host: String, origin: String, key requestKey: String, webView: WKWebView?) async -> [String: Any] {
         let rpId = ((b["rpId"] as? String) ?? host).lowercased()
         guard Self.validRP(rpId, host: host) else { return Self.err("SecurityError", "The relying party ID is not a registrable domain suffix of the origin.") }
@@ -175,7 +158,6 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
             return Self.err("NotAllowedError", "The operation either timed out or was not allowed.")
         }
         if conditional {
-            // Autofill-style sign-in: give the page a moment to settle, then offer the saved passkey(s).
             try? await Task.sleep(nanoseconds: 600_000_000)
             if let webView, webView.window == nil { return ["pending": true] }
         }
@@ -198,8 +180,6 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         ]
     }
 
-    // MARK: - UI
-
     static var biometryName: String {
         let c = LAContext()
         _ = c.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
@@ -217,7 +197,6 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         #endif
         let c = LAContext()
         var error: NSError?
-        // No passcode set (or simulator): the explicit confirmation above is the only gate available.
         guard c.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else { return true }
         return await (try? c.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
     }
@@ -266,8 +245,6 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         cancelers[key] = { [weak a] in a?.dismiss(animated: true); finish(false) }
         top.present(a, animated: true)
     }
-
-    // MARK: - Keychain
 
     private static func baseQuery(_ id: String? = nil) -> [String: Any] {
         var q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]

@@ -5,7 +5,7 @@ export default [
   { ignores: ["App/Extensions-bundle/**", "deploy/**", "build/**", "dist/**", "node_modules/**"] },
   js.configs.recommended,
   {
-    files: ["App/Resources/**/*.js", "Tests/Fixtures/**/*.js"],
+    files: ["App/Resources/**/*.js"],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: "script",
@@ -16,6 +16,15 @@ export default [
       "no-empty": ["error", { allowEmptyCatch: true }],
       eqeqeq: ["error", "always", { null: "ignore" }],
       "no-implicit-globals": "error",
+    },
+  },
+  {
+    files: ["Tests/Fixtures/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: "script",
+      parserOptions: { ecmaFeatures: { globalReturn: true } },
+      globals: globals.browser,
     },
   },
   {

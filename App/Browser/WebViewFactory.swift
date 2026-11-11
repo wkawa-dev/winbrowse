@@ -5,7 +5,12 @@ import WebKit
 final class WebViewFactory {
     static let shared = WebViewFactory()
 
-    private var controllers: [Protections: WKUserContentController] = [:]
+    struct Setup: Hashable {
+        let protections: Protections
+        let extensionPage: Bool
+    }
+
+    private var controllers: [Setup: WKUserContentController] = [:]
     private var ruleLists: [WKContentRuleList] = []
 
     var autoplayEnabled: Bool {
@@ -23,26 +28,27 @@ final class WebViewFactory {
         return SiteSettings.shared.config.mobileSiteOnTablets(host) ? .mobile : .recommended
     }
 
-    func controller(for protections: Protections) -> WKUserContentController {
-        if let c = controllers[protections] { return c }
+    func controller(for setup: Setup) -> WKUserContentController {
+        if let c = controllers[setup] { return c }
         let c = WKUserContentController()
-        install(into: c, protections)
-        controllers[protections] = c
+        install(into: c, setup)
+        controllers[setup] = c
         return c
     }
 
-    func protections(of controller: WKUserContentController) -> Protections? {
+    func setup(of controller: WKUserContentController) -> Setup? {
         controllers.first { $0.value === controller }?.key
     }
 
     func rebuildScripts() {
-        for (p, c) in controllers {
+        for (s, c) in controllers {
             c.removeAllUserScripts()
-            install(into: c, p)
+            install(into: c, s)
         }
     }
 
-    private func install(into c: WKUserContentController, _ p: Protections) {
+    private func install(into c: WKUserContentController, _ s: Setup) {
+        let p = s.protections
         var modules: AppScripts.Modules = []
         if p.contains(.backgroundMedia) { modules.insert(.media) }
         if p.contains(.passkeys) { modules.insert(.passkeys) }
@@ -53,22 +59,23 @@ final class WebViewFactory {
         let ubo = p.intersection([.cosmetic, .scriptlets])
         if !ubo.isEmpty { UBOScripts.shared.install(into: c, rulesets: ContentBlocker.shared.enabledIds.sorted(), parts: ubo) }
         ExtensionHost.shared.install(into: c)
+        if s.extensionPage { ExtensionHost.shared.installPages(into: c) }
         c.removeAllContentRuleLists()
         if p.contains(.network) { for l in ruleLists { c.add(l) } }
     }
 
     func applyRuleLists(_ lists: [WKContentRuleList]) {
         ruleLists = lists
-        for (p, c) in controllers {
+        for (s, c) in controllers {
             c.removeAllContentRuleLists()
-            if p.contains(.network) { for l in lists { c.add(l) } }
+            if s.protections.contains(.network) { for l in lists { c.add(l) } }
         }
     }
 
-    func configuration(_ protections: Protections, desktop: Bool = false) -> WKWebViewConfiguration {
+    func configuration(_ protections: Protections, desktop: Bool = false, extensionPage: Bool = false) -> WKWebViewConfiguration {
         let c = WKWebViewConfiguration()
         c.websiteDataStore = .default()
-        c.userContentController = controller(for: protections)
+        c.userContentController = controller(for: Setup(protections: protections, extensionPage: extensionPage))
         c.setURLSchemeHandler(ExtensionHost.shared.schemeHandler, forURLScheme: "winext")
         c.allowsInlineMediaPlayback = true
         c.allowsPictureInPictureMediaPlayback = true

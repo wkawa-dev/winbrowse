@@ -195,12 +195,15 @@ final class ExtensionHost: NSObject {
         for e in extensions {
             ucc.removeScriptMessageHandler(forName: "winext", contentWorld: e.world)
         }
-        ucc.removeScriptMessageHandler(forName: "winext", contentWorld: .page)
-        ucc.addScriptMessageHandler(self, contentWorld: .page, name: "winext")
         for e in enabledExtensions {
             ucc.addScriptMessageHandler(self, contentWorld: e.world, name: "winext")
             for s in userScripts(for: e) { ucc.addUserScript(s) }
         }
+    }
+
+    func installPages(into ucc: WKUserContentController) {
+        ucc.removeScriptMessageHandler(forName: "winext", contentWorld: .page)
+        ucc.addScriptMessageHandler(self, contentWorld: .page, name: "winext")
     }
 
     func shimInstall(_ e: WebExtension, ctx: String, tabId: Int = -1) -> String {

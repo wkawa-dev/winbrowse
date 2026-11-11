@@ -1,5 +1,5 @@
 {
-  "name": "pages cannot see the app's own message handlers",
+  "name": "pages cannot see any of the app's message handlers",
   "url": "{fixtures}/blank.html",
-  "expect": "!(window.webkit && (window.webkit.messageHandlers.winpasskey || window.webkit.messageHandlers.winmedia || window.webkit.messageHandlers.winerror))"
+  "expect": "!window.webkit || Object.keys(window.webkit.messageHandlers || {}).length === 0"
 }

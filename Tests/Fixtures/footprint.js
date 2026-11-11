@@ -58,8 +58,13 @@ return JSON.stringify({
   windowSymbols: Object.getOwnPropertySymbols(window).map(String),
   functionPrototypeKeys: Reflect.ownKeys(Function.prototype).map(String).sort(),
   documentPrototypeKeys: Reflect.ownKeys(Document.prototype).map(String).sort(),
-  messageHandlers: ['winext', 'winpasskey', 'winmedia', 'winlog', 'ubo'].filter((n) => handlers && handlers[n]),
+  messageHandlers: handlers ? Object.keys(handlers).sort() : [],
   webkitObject: typeof window.webkit,
-  head: document.head ? document.head.innerHTML : null,
+  head: document.head ? {
+    tags: [...document.head.children].map((e) => e.tagName).sort(),
+    selectors: [...new Set([...document.querySelectorAll('head style')].flatMap((s) => s.textContent.split(/[,\n]/)
+      .map((t) => t.replace(/\{[^}]*\}/g, '').replace(/\[[a-z0-9]{6,}\]/g, '[random]').trim())
+      .filter(Boolean)))].sort(),
+  } : null,
   attributes: [...document.querySelectorAll('*')].flatMap((e) => [...e.attributes].map((a) => a.name)).filter((n) => n.startsWith('data-')).sort(),
 });

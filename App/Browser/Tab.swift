@@ -22,6 +22,7 @@ final class Tab: NSObject, ObservableObject, Identifiable {
     @Published var blockedURL: URL?
     @Published var desktop = false
     @Published private(set) var protections: Protections = .all
+    private(set) var extensionPage = false
     @Published private(set) var life: Life
     var lastAccess = Date()
     var bypassHost: String?
@@ -67,6 +68,11 @@ final class Tab: NSObject, ObservableObject, Identifiable {
         SiteSettings.shared.protections(for: target?.host, bypass: bypassHost)
     }
 
+    func needsNewWebView(for u: URL) -> Bool {
+        WebViewFactory.Setup(protections: wanted(for: u), extensionPage: u.scheme == "winext")
+            != WebViewFactory.Setup(protections: protections, extensionPage: extensionPage)
+    }
+
     func reviveIfNeeded() {
         guard case .terminated(let w) = life else { return }
         life = .live(w)
@@ -83,14 +89,17 @@ final class Tab: NSObject, ObservableObject, Identifiable {
         }
         let f = WebViewFactory.shared
         protections = wanted(for: target)
-        let w = f.makeWebView(configuration: f.configuration(protections, desktop: desktop))
+        extensionPage = target?.scheme == "winext"
+        let w = f.makeWebView(configuration: f.configuration(protections, desktop: desktop, extensionPage: extensionPage))
         attach(w)
         if let state { w.interactionState = state } else if let target { w.load(URLRequest(url: target)) }
         return w
     }
 
     func adopt(configuration: WKWebViewConfiguration) -> WKWebView {
-        protections = WebViewFactory.shared.protections(of: configuration.userContentController) ?? wanted(for: url)
+        let setup = WebViewFactory.shared.setup(of: configuration.userContentController)
+        protections = setup?.protections ?? wanted(for: url)
+        extensionPage = setup?.extensionPage ?? false
         let w = WebViewFactory.shared.makeWebView(configuration: configuration)
         attach(w)
         return w
@@ -140,7 +149,7 @@ final class Tab: NSObject, ObservableObject, Identifiable {
         blockedURL = nil
         url = u
         guard let w = webView else { life = .cold(u); ensureWebView(); return }
-        if wanted(for: u) != protections { rebuildWebView(loading: u); return }
+        if needsNewWebView(for: u) { rebuildWebView(loading: u); return }
         w.load(URLRequest(url: u))
     }
 
@@ -174,8 +183,8 @@ extension Tab: WKNavigationDelegate {
             return decisionHandler(.cancel, preferences)
         }
         guard Self.browserSchemes.contains(scheme) else { return decisionHandler(.cancel, preferences) }
-        if action.targetFrame?.isMainFrame == true, scheme == "http" || scheme == "https",
-           action.navigationType != .backForward, wanted(for: u) != protections {
+        if action.targetFrame?.isMainFrame == true, ["http", "https", "winext"].contains(scheme),
+           action.navigationType != .backForward, needsNewWebView(for: u) {
             decisionHandler(.cancel, preferences)
             DispatchQueue.main.async { self.rebuildWebView(loading: u) }
             return

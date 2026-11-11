@@ -2,7 +2,6 @@ import Foundation
 import UniformTypeIdentifiers
 import WebKit
 
-/// Serves bundled extension files at winext://<ext>/<path>, plus generated runtime files under /__winext/.
 @MainActor
 final class WinextSchemeHandler: NSObject, WKURLSchemeHandler {
     unowned let host: ExtensionHost
@@ -28,20 +27,18 @@ final class WinextSchemeHandler: NSObject, WKURLSchemeHandler {
             return respond(task, url, Data(host.shimInstall(e, ctx: ctx, tabId: t).utf8), "text/javascript")
         }
 
-        let file = e.dir.appendingPathComponent(path)
-        guard file.standardizedFileURL.path.hasPrefix(e.dir.standardizedFileURL.path),
-              var data = try? Data(contentsOf: file) else { return fail(task, 404) }
+        let document = task.request.mainDocumentURL
+        guard ExtensionFiles.loadable(path, by: document, extensionId: id, manifest: e.manifest) else { return fail(task, 403) }
+        guard let file = ExtensionFiles.resolve(path, in: e.dir), var data = try? Data(contentsOf: file) else { return fail(task, 404) }
         let ext = file.pathExtension.lowercased()
         var mime = UTType(filenameExtension: ext)?.preferredMIMEType ?? "application/octet-stream"
         if ext == "js" || ext == "mjs" { mime = "text/javascript" }
         if ext == "html" || ext == "htm" {
-            // Extension pages get chrome.* before any of their own scripts.
             var html = String(decoding: data, as: UTF8.self)
             let inject = "<script src=\"/__winext/shim.js?ctx=page&tab=\(tabId)\"></script>"
             if let r = html.range(of: "<head>", options: .caseInsensitive) { html.insert(contentsOf: inject, at: r.upperBound) }
             else if let r = html.range(of: "<html[^>]*>", options: [.regularExpression, .caseInsensitive]) { html.insert(contentsOf: inject, at: r.upperBound) }
             else { html = inject + html }
-            // Pages are designed for a desktop popup; make them fit a phone.
             if !html.contains("name=\"viewport\"") {
                 html = html.replacingOccurrences(of: inject, with: inject + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
             }
@@ -51,16 +48,16 @@ final class WinextSchemeHandler: NSObject, WKURLSchemeHandler {
             let css = String(decoding: data, as: UTF8.self).replacingOccurrences(of: "chrome-extension://__MSG_@@extension_id__/", with: e.baseURL)
             data = Data(css.utf8)
         }
-        respond(task, url, data, mime)
+        respond(task, url, data, mime, cors: document.map { $0.scheme != "winext" } ?? false)
     }
 
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
 
-    private func respond(_ task: WKURLSchemeTask, _ url: URL, _ data: Data, _ mime: String) {
-        let headers = ["Content-Type": mime.hasPrefix("text/") ? "\(mime); charset=utf-8" : mime,
+    private func respond(_ task: WKURLSchemeTask, _ url: URL, _ data: Data, _ mime: String, cors: Bool = false) {
+        var headers = ["Content-Type": mime.hasPrefix("text/") ? "\(mime); charset=utf-8" : mime,
                        "Content-Length": "\(data.count)",
-                       "Access-Control-Allow-Origin": "*",
                        "Cache-Control": "no-cache"]
+        if cors { headers["Access-Control-Allow-Origin"] = "*" }
         let r = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: headers)!
         task.didReceive(r)
         task.didReceive(data)
@@ -72,67 +69,5 @@ final class WinextSchemeHandler: NSObject, WKURLSchemeHandler {
         task.didReceive(r)
         task.didReceive(Data())
         task.didFinish()
-    }
-}
-
-/// Refuses redirects to hosts the extension has no permission for.
-private final class RedirectGuard: NSObject, URLSessionTaskDelegate {
-    let ext: WebExtension
-    init(ext: WebExtension) { self.ext = ext }
-    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
-                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
-        completionHandler(request.url.map(ext.canAccess) == true ? request : nil)
-    }
-}
-
-/// Cross-origin fetch for extension pages, with the browser's cookies when credentials: 'include'.
-enum NativeFetch {
-    static let session: URLSession = {
-        let c = URLSessionConfiguration.ephemeral
-        c.httpShouldSetCookies = false
-        c.httpCookieAcceptPolicy = .never
-        c.httpCookieStorage = nil
-        c.requestCachePolicy = .useProtocolCachePolicy
-        c.urlCache = URLCache(memoryCapacity: 8 << 20, diskCapacity: 0)
-        return URLSession(configuration: c)
-    }()
-
-    @MainActor
-    static func perform(_ d: [String: Any], userAgent: String, ext: WebExtension?) async -> String {
-        guard let s = d["url"] as? String, let url = URL(string: s) else { return jsonString(["error": "bad url"]) }
-        guard let ext, ext.canAccess(url) else { return jsonString(["error": "host not permitted by extension host_permissions"]) }
-        var req = URLRequest(url: url)
-        req.httpMethod = d["method"] as? String ?? "GET"
-        for (k, v) in d["headers"] as? [String: String] ?? [:] { req.setValue(v, forHTTPHeaderField: k) }
-        if req.value(forHTTPHeaderField: "User-Agent") == nil, !userAgent.isEmpty { req.setValue(userAgent, forHTTPHeaderField: "User-Agent") }
-        if let b = d["body"] as? String, let body = Data(base64Encoded: b) { req.httpBody = body }
-        if (d["credentials"] as? String) == "include" {
-            let cookies = await WKWebsiteDataStore.default().httpCookieStore.allCookies()
-            let matching = cookies.filter { c in
-                guard let h = url.host?.lowercased() else { return false }
-                let dom = c.domain.lowercased()
-                let hostOK = dom.hasPrefix(".") ? (h == String(dom.dropFirst()) || h.hasSuffix(dom)) : h == dom
-                return hostOK && url.path.hasPrefix(c.path) && (!c.isSecure || url.scheme == "https")
-                    && (c.expiresDate.map { $0 > Date() } ?? true)
-            }
-            if !matching.isEmpty {
-                let header = HTTPCookie.requestHeaderFields(with: matching)["Cookie"] ?? ""
-                if let existing = req.value(forHTTPHeaderField: "Cookie"), !existing.isEmpty {
-                    req.setValue(existing + "; " + header, forHTTPHeaderField: "Cookie")
-                } else { req.setValue(header, forHTTPHeaderField: "Cookie") }
-            }
-        }
-        do {
-            let (data, resp) = try await session.data(for: req, delegate: RedirectGuard(ext: ext))
-            let http = resp as? HTTPURLResponse
-            var headers: [String: String] = [:]
-            for (k, v) in http?.allHeaderFields ?? [:] { headers[String(describing: k).lowercased()] = String(describing: v) }
-            return jsonString(["status": http?.statusCode ?? 200,
-                               "statusText": HTTPURLResponse.localizedString(forStatusCode: http?.statusCode ?? 200),
-                               "headers": headers, "url": resp.url?.absoluteString ?? s,
-                               "redirected": resp.url != url, "body": data.base64EncodedString()])
-        } catch {
-            return jsonString(["error": error.localizedDescription])
-        }
     }
 }

@@ -10,11 +10,12 @@
     const CTX = cfg.ctx;            // 'content' | 'background' | 'page'
     const BASE = 'winext://' + EXT + '/';
     const handler = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.winext;
+    const FRAME = CTX !== 'content' || window === window.top ? 0 : Math.floor(Math.random() * 2147483646) + 1;
 
     // ---- bridge ---------------------------------------------------------------------------------
     async function call(type, data) {
       if (!handler) throw new Error('Extension context invalidated.');
-      const reply = await handler.postMessage({ type, ext: EXT, data: JSON.stringify(data === undefined ? null : data) });
+      const reply = await handler.postMessage({ type, ext: EXT, frame: FRAME, data: JSON.stringify(data === undefined ? null : data) });
       if (reply == null || reply === '') return undefined;
       const r = JSON.parse(reply);
       if (r && r.__error) throw new Error(r.__error);
@@ -429,8 +430,6 @@
             if (o && o._fire) o._fire(...(p.args || []));
             return 'ok';
           }
-          case 'eval':
-            return String((0, eval)(p.code));
         }
         return 'unknown';
       },

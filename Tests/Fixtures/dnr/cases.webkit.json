@@ -22,9 +22,9 @@
       }
     }
   ],
-  "allowAllRequests: sub_frame only is dropped" : [
-
-  ],
+  "allowAllRequests: sub_frame only is dropped" : {
+    "dropped" : "allowAllRequests for frames only"
+  },
   "block: case-sensitive filter" : [
     {
       "action" : {
@@ -117,6 +117,9 @@
         "if-domain" : [
           "*site.example"
         ],
+        "resource-type" : [
+          "script"
+        ],
         "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?cdn\\.example([^a-zA-Z0-9_.%-].*)?$"
       }
     }
@@ -173,30 +176,30 @@
       }
     }
   ],
-  "domains: only wildcard initiators drop the rule" : [
-
-  ],
-  "dropped: modifyHeaders action" : [
-
-  ],
-  "dropped: non-ascii url filter" : [
-
-  ],
-  "dropped: regex filter" : [
-
-  ],
-  "dropped: request methods" : [
-
-  ],
-  "dropped: response headers" : [
-
-  ],
-  "dropped: script redirect" : [
-
-  ],
-  "dropped: url transform" : [
-
-  ],
+  "domains: only wildcard initiators drop the rule" : {
+    "dropped" : "wildcard or non-ASCII initiatorDomains"
+  },
+  "dropped: modifyHeaders action" : {
+    "dropped" : "modifyHeaders action"
+  },
+  "dropped: non-ascii url filter" : {
+    "dropped" : "non-ASCII urlFilter"
+  },
+  "dropped: regex filter" : {
+    "dropped" : "regexFilter condition"
+  },
+  "dropped: request methods" : {
+    "dropped" : "requestMethods condition"
+  },
+  "dropped: response headers" : {
+    "dropped" : "responseHeaders condition"
+  },
+  "dropped: script redirect" : {
+    "dropped" : "script or frame redirect"
+  },
+  "dropped: url transform" : {
+    "dropped" : "URL transform"
+  },
   "redirect: image redirect becomes block" : [
     {
       "action" : {

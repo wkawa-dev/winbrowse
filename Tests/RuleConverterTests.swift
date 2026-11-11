@@ -10,7 +10,10 @@ struct RuleConverterTests {
         for c in cases {
             let name = try #require(c["name"] as? String)
             let rule = try #require(c["rule"] as? [String: Any])
-            out[name] = RuleConverter.rules(from: rule)
+            switch RuleConverter.translate(rule) {
+            case .rules(let rules): out[name] = rules
+            case .dropped(let reason): out[name] = ["dropped": reason]
+            }
         }
 
         let (actual, expected) = try Fixtures.golden(out, "dnr/cases.webkit.json")
@@ -18,8 +21,8 @@ struct RuleConverterTests {
     }
 
     @MainActor @Test func webKitCompilesEveryRuleTheConverterEmits() async throws {
-        let cases = try #require(Fixtures.json("dnr/cases.webkit.json") as? [String: [[String: Any]]])
-        let rules = cases.keys.sorted().flatMap { cases[$0]! }
+        let cases = try #require(Fixtures.json("dnr/cases.webkit.json") as? [String: Any])
+        let rules = cases.keys.sorted().flatMap { cases[$0] as? [[String: Any]] ?? [] }
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -58,5 +61,25 @@ struct RuleConverterTests {
 
     @Test func refusesFiltersWebKitCannotMatch() {
         #expect(RuleConverter.urlFilterRegex("||bücher.de^") == nil)
+    }
+}
+
+@MainActor
+struct RuleListCompilerTests {
+    @Test func dropsOnlyTheRulesWebKitRejects() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = try #require(WKContentRuleListStore(url: dir))
+        let block = { (filter: String) -> [String: Any] in ["trigger": ["url-filter": filter], "action": ["type": "block"]] }
+        var rules = (0..<40).map { block("/ad\($0)/") }
+        rules.insert(block("ad{2}"), at: 23)
+        let exceptions: [[String: Any]] = [["trigger": ["url-filter": "/ok/"], "action": ["type": "ignore-previous-rules"]]]
+
+        let result = await RuleListCompiler.compilable(rules[...], with: exceptions, store: store)
+        #expect(result.rejected == 1)
+        #expect(result.kept.count == 40)
+        #expect(result.firstError != nil)
+        #expect(await RuleListCompiler.compile(result.kept + exceptions, "kept", store: store) != nil)
     }
 }

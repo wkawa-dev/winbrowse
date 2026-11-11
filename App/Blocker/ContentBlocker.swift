@@ -1,4 +1,5 @@
 import Foundation
+import os
 import WebKit
 
 @MainActor
@@ -19,6 +20,8 @@ final class ContentBlocker: ObservableObject {
     @Published private(set) var status = "idle"
     @Published private(set) var compiling = false
     @Published private(set) var activeRuleCount = 0
+    @Published private(set) var report: CompileReport?
+    private let log = Logger(subsystem: "dev.winbrowse.browser", category: "blocker")
     @Published var enabledIds: Set<String> {
         didSet { UserDefaults.standard.set(Array(enabledIds).sorted(), forKey: "ubo.rulesets") }
     }
@@ -57,64 +60,71 @@ final class ContentBlocker: ObservableObject {
     }
 
     func prepare() async -> [WKContentRuleList] {
-        guard enabled else { lists = []; activeRuleCount = 0; return [] }
+        guard enabled else { lists = []; activeRuleCount = 0; report = nil; return [] }
         let ids = enabledIds.sorted()
         let sig = "ubo-\(version)-\(RuleConverter.revision)-" + ids.joined(separator: ",").djb2
         let store = WKContentRuleListStore.default()!
-        var cached: [WKContentRuleList] = []
-        let count = UserDefaults.standard.integer(forKey: "ubo.compiled.\(sig)")
-        if count > 0 {
-            for i in 0..<count {
-                if let l = try? await store.contentRuleList(forIdentifier: "\(sig)-\(i)") { cached.append(l) } else { break }
-            }
-            if cached.count == count {
-                lists = cached
-                activeRuleCount = UserDefaults.standard.integer(forKey: "ubo.compiledRules.\(sig)")
-                status = "\(activeRuleCount.formatted()) network rules"
-                return cached
-            }
-        }
+        if let cached = await cachedLists(sig, store: store) { return cached }
+
         compiling = true
         status = "compiling filter lists…"
         let rootURL = root
-        let (blocks, allows) = await Task.detached(priority: .userInitiated) { RuleConverter.convert(root: rootURL, ids: ids) }.value
+        let conversion = await Task.detached(priority: .userInitiated) { RuleConverter.convert(root: rootURL, ids: ids) }.value
+        var report = CompileReport(dropped: conversion.dropped)
+        let exceptions = await RuleListCompiler.compilable(conversion.allows[...], with: [], store: store)
+        report.rejectedExceptions = exceptions.rejected
+        report.firstRejection = exceptions.firstError
+        let per = max(10_000, RuleConverter.maxRulesPerList - exceptions.kept.count)
         var out: [WKContentRuleList] = []
-        var total = 0
-        let per = max(10_000, RuleConverter.maxRulesPerList - allows.count)
-        var pending: [ArraySlice<[String: Any]>] = stride(from: 0, to: max(blocks.count, 1), by: per).map { blocks[$0..<min(blocks.count, $0 + per)] }
-        var withAllows = true
-        var n = 0
-        while !pending.isEmpty {
-            let slice = pending.removeFirst()
-            let rules = Array(slice) + (withAllows ? allows : [])
-            status = "compiling filter lists… \(total.formatted()) rules"
-            let json = await Task.detached { RuleConverter.json(rules) }.value
-            do {
-                if let l = try await store.compileContentRuleList(forIdentifier: "\(sig)-\(n)", encodedContentRuleList: json) {
-                    out.append(l); total += rules.count; n += 1
-                }
-            } catch {
-                NSLog("[ubo] chunk of \(slice.count) failed: \(error.localizedDescription)")
-                if slice.count > 200 {
-                    let mid = slice.startIndex + slice.count / 2
-                    pending.insert(contentsOf: [slice[slice.startIndex..<mid], slice[mid..<slice.endIndex]], at: 0)
-                } else if slice.count <= 1 && withAllows && out.isEmpty {
-                    withAllows = false
-                    pending = stride(from: 0, to: blocks.count, by: per).map { blocks[$0..<min(blocks.count, $0 + per)] }
-                } else if slice.count > 1 {
-                    pending.insert(contentsOf: slice.map { [$0][...] }, at: 0)
-                }
+        for start in stride(from: 0, to: max(conversion.blocks.count, 1), by: per) {
+            status = "compiling filter lists… \(report.converted.formatted()) rules"
+            let chunk = conversion.blocks[start..<min(conversion.blocks.count, start + per)]
+            let id = "\(sig)-\(out.count)"
+            if let l = await RuleListCompiler.compile(Array(chunk) + exceptions.kept, id, store: store) {
+                out.append(l)
+                report.converted += chunk.count
+                continue
+            }
+            let blocks = await RuleListCompiler.compilable(chunk, with: exceptions.kept, store: store)
+            report.rejected += blocks.rejected
+            report.firstRejection = report.firstRejection ?? blocks.firstError
+            if let l = await RuleListCompiler.compile(blocks.kept + exceptions.kept, id, store: store) {
+                out.append(l)
+                report.converted += blocks.kept.count
             }
         }
+        report.converted += exceptions.kept.count
+        report.lists = out.count
+        if report.rejected + report.rejectedExceptions > 0 {
+            log.error("WebKit rejected \(report.rejected) block and \(report.rejectedExceptions) exception rules: \(report.firstRejection ?? "", privacy: .public)")
+        }
         UserDefaults.standard.set(out.count, forKey: "ubo.compiled.\(sig)")
-        UserDefaults.standard.set(total, forKey: "ubo.compiledRules.\(sig)")
+        UserDefaults.standard.set(try? JSONEncoder().encode(report), forKey: "ubo.report.\(sig)")
         if let old = await store.availableIdentifiers() {
             for id in old where id.hasPrefix("ubo-") && !id.hasPrefix(sig) { try? await store.removeContentRuleList(forIdentifier: id) }
         }
-        lists = out
-        activeRuleCount = total
+        finish(out, report)
         compiling = false
-        status = "\(total.formatted()) network rules"
         return out
+    }
+
+    private func cachedLists(_ sig: String, store: WKContentRuleListStore) async -> [WKContentRuleList]? {
+        let count = UserDefaults.standard.integer(forKey: "ubo.compiled.\(sig)")
+        guard count > 0, let data = UserDefaults.standard.data(forKey: "ubo.report.\(sig)"),
+              let saved = try? JSONDecoder().decode(CompileReport.self, from: data) else { return nil }
+        var cached: [WKContentRuleList] = []
+        for i in 0..<count {
+            guard let l = try? await store.contentRuleList(forIdentifier: "\(sig)-\(i)") else { return nil }
+            cached.append(l)
+        }
+        finish(cached, saved)
+        return cached
+    }
+
+    private func finish(_ out: [WKContentRuleList], _ report: CompileReport) {
+        lists = out
+        self.report = report
+        activeRuleCount = report.converted
+        status = "\(report.converted.formatted()) network rules"
     }
 }

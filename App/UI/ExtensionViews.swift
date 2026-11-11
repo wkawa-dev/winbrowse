@@ -111,6 +111,9 @@ struct UBlockView: View {
                         MetroToggle(title: "uBlock Origin", detail: blocker.status, isOn: $blocker.enabled)
                             .onChange(of: blocker.enabled) { _, _ in dirty = true }
                         if blocker.compiling { MetroDots() }
+                        if let r = blocker.report, !blocker.compiling {
+                            Text(Self.describe(r)).font(MetroFont.caption).foregroundStyle(theme.subtle)
+                        }
                     }
 
                     let groups = ["default", "ads", "privacy", "annoyances", "regions"]
@@ -157,6 +160,18 @@ struct UBlockView: View {
             }
         }
         .onAppear { pending = blocker.enabledIds }
+    }
+
+    static func describe(_ r: CompileReport) -> String {
+        var lines = ["\(r.converted.formatted()) WebKit rules in \(r.lists) lists."]
+        if r.droppedTotal > 0 {
+            let reasons = r.dropped.sorted { $0.value > $1.value }.prefix(3).map { "\($0.key) \($0.value.formatted())" }.joined(separator: ", ")
+            lines.append("\(r.droppedTotal.formatted()) filters need features WebKit lacks (\(reasons)).")
+        }
+        if r.rejected + r.rejectedExceptions > 0 {
+            lines.append("WebKit refused \(r.rejected.formatted()) block rules and \(r.rejectedExceptions.formatted()) exceptions: \(r.firstRejection ?? "no message").")
+        }
+        return lines.joined(separator: " ")
     }
 
     static let siteSwitches: [(Protections, String, String)] = [

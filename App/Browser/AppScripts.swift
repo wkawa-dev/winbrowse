@@ -69,25 +69,16 @@ final class PageErrors: NSObject, WKScriptMessageHandler {
     nonisolated static let name = "winerror"
     static let limit = 50
 
-    struct Entry: Codable, Equatable {
-        let kind: String
-        let message: String
-        let page: String
-        let source: String
-        let line: Int
-        let date: Date
-    }
+    private var entries: [ObjectIdentifier: [PageError]] = [:]
 
-    private var entries: [ObjectIdentifier: [Entry]] = [:]
-
-    func entries(for webView: WKWebView) -> [Entry] { entries[ObjectIdentifier(webView)] ?? [] }
+    func entries(for webView: WKWebView) -> [PageError] { entries[ObjectIdentifier(webView)] ?? [] }
 
     func forget(_ webView: WKWebView) { entries[ObjectIdentifier(webView)] = nil }
 
     func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let w = message.webView, let b = message.body as? [String: Any] else { return }
-        let entry = Entry(kind: b["kind"] as? String ?? "error", message: String((b["message"] as? String ?? "").prefix(500)),
-                          page: b["page"] as? String ?? "", source: b["source"] as? String ?? "", line: b["line"] as? Int ?? 0, date: Date())
+        let entry = PageError(kind: b["kind"] as? String ?? "error", message: String((b["message"] as? String ?? "").prefix(500)),
+                              page: b["page"] as? String ?? "", source: b["source"] as? String ?? "", line: b["line"] as? Int ?? 0, date: Date())
         var list = entries[ObjectIdentifier(w)] ?? []
         list.append(entry)
         entries[ObjectIdentifier(w)] = Array(list.suffix(Self.limit))

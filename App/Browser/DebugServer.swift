@@ -124,7 +124,7 @@ final class DebugServer {
             guard let e = ExtensionHost.shared.ext(q["ext"] ?? ""), let p = q["page"] ?? e.popup ?? e.options else { return "no" }
             store.extPresent(ext: e, page: p); return "ok"
         case "/ubo":
-            if let site = q["site"] { ContentBlocker.shared.setSite(site, disabled: q["off"] == "1") }
+            if let site = q["site"] { SiteSettings.shared.set(.blocking, on: q["off"] != "1", for: site) }
             if let t = store.active { t.rebuildWebView(loading: t.url) }
             return "ok"
         case "/ext":

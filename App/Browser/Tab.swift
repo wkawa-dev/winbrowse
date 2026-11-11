@@ -4,6 +4,13 @@ import WebKit
 
 @MainActor
 final class Tab: NSObject, ObservableObject, Identifiable {
+    enum Life {
+        case cold(URL?)
+        case suspended(Data, URL?)
+        case live(WKWebView)
+        case terminated(WKWebView)
+    }
+
     let id: Int
     @Published var url: URL?
     @Published var title: String = ""
@@ -12,37 +19,41 @@ final class Tab: NSObject, ObservableObject, Identifiable {
     @Published var canGoBack = false
     @Published var canGoForward = false
     @Published var thumbnail: UIImage?
-    @Published var blockedURL: URL? // main-frame load stopped by uBO (strict blocking)
+    @Published var blockedURL: URL?
     @Published var desktop = false
-    @Published var filteredContent = true
-    @Published var hasWebView = false
+    @Published private(set) var protections: Protections = .all
+    @Published private(set) var life: Life
     var lastAccess = Date()
-    var restoreState: Data?
-    var pendingURL: URL?
-    /// One-shot bypass for "proceed" on the strict-block page.
     var bypassHost: String?
-    private var contentTerminated = false
-
-    private var isVisible: Bool {
-        store?.activeId == id && UIApplication.shared.applicationState == .active
-    }
-
-    /// Reload a tab whose web content process was terminated (called when it is shown / the app returns).
-    func reviveIfNeeded() {
-        guard contentTerminated, let w = webView else { return }
-        contentTerminated = false
-        if w.url != nil { w.reload() } else if let u = url { w.load(URLRequest(url: u)) }
-    }
-
-    private(set) var webView: WKWebView?
     private var bag: Set<AnyCancellable> = []
     weak var store: BrowserStore?
 
-    init(id: Int, url: URL?, store: BrowserStore) {
+    init(id: Int, url: URL?, store: BrowserStore, savedState: Data? = nil) {
         self.id = id
         self.url = url
-        self.pendingURL = url
         self.store = store
+        life = savedState.map { .suspended($0, url) } ?? .cold(url)
+    }
+
+    var webView: WKWebView? {
+        switch life {
+        case .live(let w), .terminated(let w): return w
+        case .cold, .suspended: return nil
+        }
+    }
+
+    var hasWebView: Bool { webView != nil }
+
+    var savedState: Data? {
+        switch life {
+        case .live(let w), .terminated(let w): return w.interactionState as? Data
+        case .suspended(let d, _): return d
+        case .cold: return nil
+        }
+    }
+
+    private var isVisible: Bool {
+        store?.activeId == id && UIApplication.shared.applicationState == .active
     }
 
     var displayTitle: String {
@@ -52,30 +63,41 @@ final class Tab: NSObject, ObservableObject, Identifiable {
         return url == nil ? "new tab" : (url?.absoluteString ?? "")
     }
 
-    /// Creates the web view on first use (tabs restored at launch stay cold until shown).
+    func wanted(for target: URL?) -> Protections {
+        SiteSettings.shared.protections(for: target?.host, bypass: bypassHost)
+    }
+
+    func reviveIfNeeded() {
+        guard case .terminated(let w) = life else { return }
+        life = .live(w)
+        if w.url != nil { w.reload() } else if let u = url { w.load(URLRequest(url: u)) }
+    }
+
     @discardableResult
-    func ensureWebView(configuration: WKWebViewConfiguration? = nil) -> WKWebView {
-        if let webView { return webView }
-        let f = WebViewFactory.shared
-        let filtered = !(ContentBlocker.shared.isSiteDisabled(url?.host))
-        filteredContent = filtered
-        let w = f.makeWebView(configuration: configuration ?? f.configuration(filteredContent: filtered, desktop: desktop))
-        attach(w)
-        if configuration == nil {
-            if let s = restoreState {
-                w.interactionState = s
-                restoreState = nil
-            } else if let u = pendingURL {
-                w.load(URLRequest(url: u))
-            }
+    func ensureWebView() -> WKWebView {
+        let target: URL?, state: Data?
+        switch life {
+        case .live(let w), .terminated(let w): return w
+        case .cold(let u): target = u; state = nil
+        case .suspended(let d, let u): target = u; state = d
         }
-        pendingURL = nil
+        let f = WebViewFactory.shared
+        protections = wanted(for: target)
+        let w = f.makeWebView(configuration: f.configuration(protections, desktop: desktop))
+        attach(w)
+        if let state { w.interactionState = state } else if let target { w.load(URLRequest(url: target)) }
+        return w
+    }
+
+    func adopt(configuration: WKWebViewConfiguration) -> WKWebView {
+        protections = WebViewFactory.shared.protections(of: configuration.userContentController) ?? wanted(for: url)
+        let w = WebViewFactory.shared.makeWebView(configuration: configuration)
+        attach(w)
         return w
     }
 
     private func attach(_ w: WKWebView) {
-        webView = w
-        hasWebView = true
+        life = .live(w)
         w.navigationDelegate = self
         w.uiDelegate = self
         w.customUserAgent = desktop ? WebViewFactory.desktopUA : nil
@@ -104,15 +126,11 @@ final class Tab: NSObject, ObservableObject, Identifiable {
         if let info = store.extTabs.first(where: { $0.id == id }) { ExtensionHost.shared.tabUpdated(info, change: change) }
     }
 
-    /// Swap the web view for one with a different controller (uBO on/off for this site, desktop mode).
     func rebuildWebView(loading u: URL?) {
         let old = webView
         old?.stopLoading()
         if let old { ExtensionHost.shared.tabNavigated(old) }
-        webView = nil
-        hasWebView = false
-        pendingURL = u ?? url
-        restoreState = nil
+        life = .cold(u ?? url)
         ensureWebView()
         old?.removeFromSuperview()
         store?.objectWillChange.send()
@@ -121,9 +139,9 @@ final class Tab: NSObject, ObservableObject, Identifiable {
     func load(_ u: URL) {
         blockedURL = nil
         url = u
-        if webView == nil { pendingURL = u; ensureWebView(); return }
-        if ContentBlocker.shared.isSiteDisabled(u.host) == filteredContent { rebuildWebView(loading: u); return }
-        webView?.load(URLRequest(url: u))
+        guard let w = webView else { life = .cold(u); ensureWebView(); return }
+        if wanted(for: u) != protections { rebuildWebView(loading: u); return }
+        w.load(URLRequest(url: u))
     }
 
     func snapshot() {
@@ -134,50 +152,40 @@ final class Tab: NSObject, ObservableObject, Identifiable {
     }
 
     func discard() {
-        if let w = webView {
-            restoreState = w.interactionState as? Data
-            ExtensionHost.shared.tabNavigated(w)
-            w.removeFromSuperview()
-        }
-        pendingURL = url
-        webView = nil
-        hasWebView = false
+        guard let w = webView else { return }
+        let state = w.interactionState as? Data
+        ExtensionHost.shared.tabNavigated(w)
+        w.removeFromSuperview()
+        life = state.map { .suspended($0, url) } ?? .cold(url)
     }
 }
 
-// MARK: - Navigation
-
 extension Tab: WKNavigationDelegate {
+    private static let externalSchemes: Set = ["tel", "mailto", "sms", "facetime", "facetime-audio", "maps", "itms-apps", "itms-appss"]
+    private static let browserSchemes: Set = ["http", "https", "about", "blob", "data", "winext", "javascript", "file"]
+    private static let frameLoadBlockedByContentRuleList = 104
+
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, preferences: WKWebpagePreferences,
                  decisionHandler: @escaping (WKNavigationActionPolicy, WKWebpagePreferences) -> Void) {
         guard let u = action.request.url else { return decisionHandler(.cancel, preferences) }
         let scheme = u.scheme?.lowercased() ?? ""
-        if ["tel", "mailto", "sms", "facetime", "facetime-audio", "maps", "itms-apps", "itms-appss"].contains(scheme) {
+        if Self.externalSchemes.contains(scheme) {
             UIApplication.shared.open(u)
             return decisionHandler(.cancel, preferences)
         }
-        if !["http", "https", "about", "blob", "data", "winext", "javascript", "file"].contains(scheme) {
-            // youtube://, vnd.youtube:, intent://, twitter:// … stay in the browser.
-            return decisionHandler(.cancel, preferences)
-        }
-        if action.targetFrame?.isMainFrame == true, scheme == "http" || scheme == "https" {
-            let host = u.host?.lowercased()
-            let wantFiltered = !ContentBlocker.shared.isSiteDisabled(host) && bypassHost != host
-            if wantFiltered != filteredContent, action.navigationType != .backForward {
-                decisionHandler(.cancel, preferences)
-                DispatchQueue.main.async { self.rebuildWebView(loading: u) }
-                return
-            }
+        guard Self.browserSchemes.contains(scheme) else { return decisionHandler(.cancel, preferences) }
+        if action.targetFrame?.isMainFrame == true, scheme == "http" || scheme == "https",
+           action.navigationType != .backForward, wanted(for: u) != protections {
+            decisionHandler(.cancel, preferences)
+            DispatchQueue.main.async { self.rebuildWebView(loading: u) }
+            return
         }
         preferences.preferredContentMode = WebViewFactory.contentMode(for: u.host, desktop: desktop)
         decisionHandler(.allow, preferences)
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
-        if response.isForMainFrame, !response.canShowMIMEType {
-            return decisionHandler(.download)
-        }
-        decisionHandler(.allow)
+        decisionHandler(response.isForMainFrame && !response.canShowMIMEType ? .download : .allow)
     }
 
     func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
@@ -194,7 +202,7 @@ extension Tab: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
         ExtensionHost.shared.tabNavigated(webView)
-        if let h = webView.url?.host?.lowercased(), h != bypassHost { bypassHost = nil }
+        if let h = SitePolicy.normalize(webView.url?.host), h != SitePolicy.normalize(bypassHost) { bypassHost = nil }
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -205,21 +213,16 @@ extension Tab: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         let e = error as NSError
-        // WKError.Code 104 = frame load blocked by a content rule list.
-        if e.domain == "WebKitErrorDomain", e.code == 104 {
-            blockedURL = (e.userInfo[NSURLErrorFailingURLErrorKey] as? URL) ?? URL(string: e.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? "")
-        }
+        guard e.domain == "WebKitErrorDomain", e.code == Self.frameLoadBlockedByContentRuleList else { return }
+        blockedURL = (e.userInfo[NSURLErrorFailingURLErrorKey] as? URL) ?? URL(string: e.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? "")
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        // iOS reclaimed this tab's page process. Reload only once it's on screen, like Safari: reloading every
-        // background tab at once (often while the app itself is in the background) just gets them killed again.
-        contentTerminated = true
+        guard case .live(let w) = life, w === webView else { return }
+        life = .terminated(w)
         if isVisible { reviveIfNeeded() }
     }
 }
-
-// MARK: - UI delegate
 
 extension Tab: WKUIDelegate {
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
@@ -227,7 +230,7 @@ extension Tab: WKUIDelegate {
         guard let store else { return nil }
         let t = store.newTab(url: nil, activate: true, opener: self)
         t.url = action.request.url
-        return t.ensureWebView(configuration: configuration)
+        return t.adopt(configuration: configuration)
     }
 
     func webViewDidClose(_ webView: WKWebView) {
@@ -255,7 +258,6 @@ extension Tab: WKUIDelegate {
     }
 }
 
-/// UIKit alerts styled by the system; used for JS dialogs.
 @MainActor
 enum Dialogs {
     static var top: UIViewController? {
@@ -263,12 +265,14 @@ enum Dialogs {
         while let p = vc?.presentedViewController { vc = p }
         return vc
     }
+
     static func alert(title: String, message: String, done: @escaping () -> Void) {
         let a = UIAlertController(title: title, message: message, preferredStyle: .alert)
         a.addAction(UIAlertAction(title: "OK", style: .default) { _ in done() })
         guard let top else { return done() }
         top.present(a, animated: true)
     }
+
     static func confirm(title: String, message: String, completion: @escaping (Bool) -> Void) {
         let a = UIAlertController(title: title, message: message, preferredStyle: .alert)
         a.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completion(false) })
@@ -276,6 +280,7 @@ enum Dialogs {
         guard let top else { return completion(false) }
         top.present(a, animated: true)
     }
+
     static func prompt(title: String, message: String, text: String, completion: @escaping (String?) -> Void) {
         let a = UIAlertController(title: title, message: message, preferredStyle: .alert)
         a.addTextField { $0.text = text }

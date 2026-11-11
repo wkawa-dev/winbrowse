@@ -28,7 +28,6 @@ enum AppBoot {
         let host = ExtensionHost.shared
         host.load()
         host.tabs = BrowserStore.shared
-        host.userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) " + WebViewFactory.safariSuffix
         WebViewFactory.shared.rebuildScripts()
         BrowserStore.shared.restore()
         BrowserStore.shared.observeMemoryWarnings()
@@ -43,7 +42,9 @@ enum AppBoot {
         DebugServer.shared.start()
         #endif
         // Grab the real UA for the extension fetch proxy.
-        let probe = WKWebView(frame: .zero, configuration: WebViewFactory.shared.configuration())
+        let probeConfiguration = WKWebViewConfiguration()
+        probeConfiguration.applicationNameForUserAgent = WebViewFactory.safariSuffix
+        let probe = WKWebView(frame: .zero, configuration: probeConfiguration)
         probe.evaluateJavaScript("navigator.userAgent") { r, _ in
             if let ua = r as? String { host.userAgent = ua }
             _ = probe

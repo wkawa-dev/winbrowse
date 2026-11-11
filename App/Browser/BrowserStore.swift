@@ -119,10 +119,9 @@ final class BrowserStore: ObservableObject {
         guard tabs.isEmpty else { return }
         if let d = try? Data(contentsOf: Self.stateURL), let s = try? JSONDecoder().decode(Saved.self, from: d), !s.tabs.isEmpty {
             for st in s.tabs {
-                let t = Tab(id: nextId, url: st.url.flatMap(URL.init(string:)), store: self)
+                let t = Tab(id: nextId, url: st.url.flatMap(URL.init(string:)), store: self, savedState: st.state)
                 nextId += 1
                 t.title = st.title
-                t.restoreState = st.state
                 t.desktop = st.desktop ?? false
                 tabs.append(t)
             }
@@ -143,7 +142,7 @@ final class BrowserStore: ObservableObject {
         persistScheduled = false
         let saved = Saved(tabs: tabs.map { t in
             SavedTab(url: t.url?.absoluteString, title: t.title,
-                     state: (t.webView?.interactionState as? Data) ?? t.restoreState, desktop: t.desktop)
+                     state: t.savedState, desktop: t.desktop)
         }, active: tabs.firstIndex { $0.id == activeId })
         if let d = try? JSONEncoder().encode(saved) { try? d.write(to: Self.stateURL, options: .atomic) }
     }

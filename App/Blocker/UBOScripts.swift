@@ -7,27 +7,31 @@ enum UBOAssets {
     static func exists(_ rel: String) -> Bool { FileManager.default.fileExists(atPath: root.appendingPathComponent(rel).path) }
 }
 
-/// uBO's cosmetic filtering and scriptlet injection, using uBO Lite's own compiled per-ruleset scripts.
 @MainActor
 final class UBOScripts: NSObject {
     static let shared = UBOScripts()
     let world = WKContentWorld.world(name: "ubo")
 
-    /// Specific cosmetic filters per ruleset, loaded lazily from rulesets/scripting/specific/<id>.json.
     private struct Specific {
         var selectors: [String]
         var selectorLists: [[Int]]
-        var byHost: [String: Int] // hostname or entity → selectorLists index
+        var byHost: [String: Int]
         var regexes: [(String, NSRegularExpression, Int)]
     }
     private var specific: [String: Specific] = [:]
 
-    func install(into ucc: WKUserContentController, rulesets ids: [String]) {
+    func install(into ucc: WKUserContentController, rulesets ids: [String], parts: Protections) {
         ucc.removeScriptMessageHandler(forName: "ubo", contentWorld: world)
-        ucc.addScriptMessageHandler(self, contentWorld: world, name: "ubo")
-        let guardHTTP = "if(location.protocol==='http:'||location.protocol==='https:'||location.protocol==='about:'||location.protocol==='blob:')"
+        if parts.contains(.scriptlets) { installScriptlets(into: ucc, rulesets: ids) }
+        if parts.contains(.cosmetic) {
+            ucc.addScriptMessageHandler(self, contentWorld: world, name: "ubo")
+            installCosmetic(into: ucc, rulesets: ids)
+        }
+    }
 
-        // 1. Scriptlets — MAIN world, document start, every frame (YouTube ad stripping lives here).
+    private let guardHTTP = "if(location.protocol==='http:'||location.protocol==='https:'||location.protocol==='about:'||location.protocol==='blob:')"
+
+    private func installScriptlets(into ucc: WKUserContentController, rulesets ids: [String]) {
         let scriptletDetails = Self.scriptletWorlds()
         for world in ["main", "isolated"] {
             let files = ids.filter { scriptletDetails[$0]?.contains(world.uppercased()) == true }
@@ -39,8 +43,9 @@ final class UBOScripts: NSObject {
             ucc.addUserScript(WKUserScript(source: "\(guardHTTP){\n\(src)\n}", injectionTime: .atDocumentStart, forMainFrameOnly: false,
                                            in: world == "main" ? .page : self.world))
         }
+    }
 
-        // 2. Specific + procedural cosmetic filters — isolated world, document start.
+    private func installCosmetic(into ucc: WKUserContentController, rulesets ids: [String]) {
         let api = ["js/css-api.js", "js/isolated-api.js", "js/css-procedural-api.js"].map(UBOAssets.text).joined(separator: "\n;\n")
         let specificLoader = """
         (async function(){
@@ -59,7 +64,6 @@ final class UBOScripts: NSObject {
         ucc.addUserScript(WKUserScript(source: "\(guardHTTP){\n\(Self.cssShim)\n\(api)\n\(specificLoader)\n}", injectionTime: .atDocumentStart,
                                        forMainFrameOnly: false, in: world))
 
-        // 3. Generic cosmetic filters — isolated world, document end.
         let genericFiles = ids.map { "rulesets/scripting/generic/\($0).js" }.filter(UBOAssets.exists)
         if !genericFiles.isEmpty {
             let unhide = Self.genericUnhide(ids)
@@ -104,8 +108,6 @@ final class UBOScripts: NSObject {
         }
         return out
     }
-
-    // MARK: - Specific cosmetic lookup (port of uBO Lite's css-specific.js selectorsFromRuleset)
 
     private func loadSpecific(_ id: String) -> Specific? {
         if let s = specific[id] { return s }

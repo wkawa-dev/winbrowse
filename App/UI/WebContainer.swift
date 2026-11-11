@@ -63,7 +63,7 @@ struct BlockedPage: View {
                     }
                 }
                 MetroButton(title: "always allow \(url.host ?? "this site")") {
-                    if let h = url.host { ContentBlocker.shared.setSite(h, disabled: true) }
+                    if let h = url.host { SiteSettings.shared.set(.network, on: false, for: h) }
                     tab.blockedURL = nil
                     tab.rebuildWebView(loading: url)
                 }

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WinBrowse bundled site configuration",
+  "description": "Per-site defaults that ship with the app (App/Resources/site-config.json). A site entry applies to its domain and every subdomain. A user's own per-site choices replace the entry's 'off' list.",
+  "type": "object",
+  "required": ["sites"],
+  "additionalProperties": false,
+  "properties": {
+    "sites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["domain", "reason", "case"],
+        "additionalProperties": false,
+        "properties": {
+          "domain": { "type": "string", "pattern": "^[a-z0-9.-]+$", "description": "Registrable domain or subdomain, lowercase, without www." },
+          "off": {
+            "type": "array",
+            "items": { "enum": ["network", "cosmetic", "scriptlets", "backgroundMedia", "passkeys"] },
+            "description": "Protections that are off by default on this site."
+          },
+          "mobileSiteOnTablets": { "type": "boolean", "description": "Ask for the mobile site on iPad instead of the desktop site." },
+          "reason": { "type": "string", "minLength": 20, "description": "Why the site needs this, in one or two sentences." },
+          "case": { "type": "string", "pattern": "^docs/breakage/[a-z0-9-]+\\.md$", "description": "The breakage case file that records the reproduction, cause and fix." }
+        }
+      }
+    }
+  }
+}

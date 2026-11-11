@@ -80,11 +80,11 @@ private struct ExtensionCard: View {
     }
 }
 
-/// uBO's popup + dashboard rolled into one: per-site power switch, filter lists.
 struct UBlockView: View {
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var store: BrowserStore
     @ObservedObject var blocker = ContentBlocker.shared
+    @ObservedObject var sites = SiteSettings.shared
     @State private var pending: Set<String> = []
     @State private var dirty = false
 
@@ -92,25 +92,19 @@ struct UBlockView: View {
         MetroPage(title: "uBlock Origin", subtitle: "filter lists \(blocker.version)") {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    if let host = store.active?.url?.host {
-                        let off = blocker.isSiteDisabled(host)
-                        Button {
-                            blocker.setSite(host, disabled: !off)
-                            if let t = store.active { t.rebuildWebView(loading: t.url) }
-                        } label: {
-                            HStack(spacing: 16) {
-                                Image(systemName: "power").font(.system(size: 38, weight: .light))
-                                    .foregroundStyle(off ? theme.subtle : .white)
-                                    .frame(width: 76, height: 76).background(off ? theme.chrome : theme.accent)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(host).font(MetroFont.title(22)).foregroundStyle(theme.fg).lineLimit(1)
-                                    Text(off ? "uBlock Origin is off for this site — tap to turn on" : "filtering this site — tap to turn off")
-                                        .font(MetroFont.caption).foregroundStyle(theme.subtle)
-                                }
+                    if let tab = store.active, let host = SitePolicy.normalize(tab.url?.host) {
+                        MetroGroup(title: "on \(host)") {
+                            ForEach(Self.siteSwitches, id: \.1) { protection, title, detail in
+                                MetroToggle(title: title, detail: detail, isOn: Binding(
+                                    get: { sites.protections(for: host).contains(protection) },
+                                    set: { on in
+                                        sites.set(protection, on: on, for: host)
+                                        tab.rebuildWebView(loading: tab.url)
+                                    }
+                                ))
+                                .disabled(!sites.policy.enabled.contains(protection))
                             }
-                            .contentShape(Rectangle())
                         }
-                        .buttonStyle(.tilt)
                     }
 
                     MetroGroup(title: "status") {
@@ -135,13 +129,17 @@ struct UBlockView: View {
                         }
                     }
 
-                    if !disabledSites.isEmpty {
-                        MetroGroup(title: "trusted sites") {
-                            ForEach(disabledSites, id: \.self) { s in
+                    if !sites.userOff.isEmpty {
+                        MetroGroup(title: "sites with their own settings") {
+                            ForEach(sites.userOff.keys.sorted(), id: \.self) { host in
                                 HStack {
-                                    Text(s).font(.system(size: 17)).foregroundStyle(theme.fg)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(host).font(.system(size: 17)).foregroundStyle(theme.fg)
+                                        Text("off: " + Self.siteSwitches.filter { sites.userOff[host]?.contains($0.0) == true }.map(\.1).joined(separator: ", "))
+                                            .font(MetroFont.caption).foregroundStyle(theme.subtle)
+                                    }
                                     Spacer()
-                                    Button("remove") { blocker.setSite(s, disabled: false) }.foregroundStyle(theme.accent)
+                                    Button("reset") { sites.reset(host) }.foregroundStyle(theme.accent)
                                 }
                             }
                         }
@@ -161,14 +159,20 @@ struct UBlockView: View {
         .onAppear { pending = blocker.enabledIds }
     }
 
-    private var disabledSites: [String] { blocker.disabledSites.sorted() }
+    static let siteSwitches: [(Protections, String, String)] = [
+        (.network, "network blocking", "ads, trackers and malware requests"),
+        (.cosmetic, "cosmetic filters", "hide ad slots and banners"),
+        (.scriptlets, "scriptlets", "neutralise anti-adblock and ad scripts"),
+        (.backgroundMedia, "background play", "keep audio and video playing in the background"),
+        (.passkeys, "passkeys", "sign in with passkeys saved in WinBrowse"),
+    ]
 
     private func apply() {
         blocker.enabledIds = pending
         Task {
             await AppBoot.reloadBlocking()
             dirty = false
-            for t in store.tabs { t.webView?.reload() }
+            store.recycleWebViews()
         }
     }
 }

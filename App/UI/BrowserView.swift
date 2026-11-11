@@ -315,7 +315,7 @@ struct ExtensionButtons: View {
                 .accessibilityLabel(e.name)
             }
             Button { router.push(.ublock) } label: {
-                UBOIcon(on: !ContentBlocker.shared.isSiteDisabled(tab.url?.host)).frame(width: 34, height: 34).contentShape(Rectangle())
+                UBOIcon(on: !tab.protections.isDisjoint(with: .blocking)).frame(width: 34, height: 34).contentShape(Rectangle())
             }
             .buttonStyle(.tilt)
             .accessibilityLabel("uBlock Origin")

@@ -16,7 +16,7 @@ struct AppFootprintTests {
             let base = URL(string: origin)!
             let pristine = PageHarness()
             try await pristine.load(html: "<!doctype html><title>footprint</title>", baseURL: base)
-            let tab = PageHarness(configuration: WebViewFactory.shared.configuration(filteredContent: true))
+            let tab = PageHarness(configuration: WebViewFactory.shared.configuration(SiteSettings.shared.protections(for: base.host)))
             try await tab.load(html: "<!doctype html><title>footprint</title>", baseURL: base)
             try await Task.sleep(nanoseconds: 300_000_000)
             observed[origin] = try await Footprint.differences(Footprint.take(pristine), Footprint.take(tab))

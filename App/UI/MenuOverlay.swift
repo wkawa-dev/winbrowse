@@ -91,7 +91,7 @@ struct MenuOverlay: View {
 
     private var uboDetail: String {
         let host = tab.url?.host ?? ""
-        return ContentBlocker.shared.isSiteDisabled(host) ? "off for \(host)" : "on · \(ContentBlocker.shared.status)"
+        return tab.protections.isDisjoint(with: .blocking) ? "off for \(host)" : "on · \(ContentBlocker.shared.status)"
     }
 
     private func close() { router.closeMenu() }

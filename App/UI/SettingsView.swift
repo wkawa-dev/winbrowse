@@ -33,7 +33,7 @@ struct SettingsView: View {
                         MetroToggle(title: "background play", detail: "keep audio and video playing with the screen locked or in another app", isOn: $bgAudio)
                             .onChange(of: bgAudio) { _, v in
                                 BackgroundMedia.shared.enabled = v
-                                WebViewFactory.shared.rebuildScripts()
+                                store.recycleWebViews()
                             }
                         MetroToggle(title: "autoplay video", detail: "let pages start videos on their own. turn off to keep music from other apps playing while you scroll; tap a video to play it", isOn: $autoplay)
                             .onChange(of: autoplay) { _, v in

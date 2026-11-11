@@ -1,0 +1,10 @@
+{
+  "sites": [
+    {
+      "domain": "youtube.com",
+      "mobileSiteOnTablets": true,
+      "reason": "On iPad, WebKit asks for YouTube's desktop site. The mobile site is the one that plays reliably in WinBrowse, and SponsorBlock and background play are tuned for it.",
+      "case": "docs/breakage/youtube-ipad-desktop-site.md"
+    }
+  ]
+}

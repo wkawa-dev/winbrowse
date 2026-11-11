@@ -17,7 +17,7 @@ need swiftformat "brew install swiftformat"
 need npm "brew install node"
 
 step "no code comments"
-if git grep -n -E '^\s*//' -- 'App/*.swift' 'App/Resources/*.js' 'Tests/*.swift' 'Tests/Fixtures/*.js'; then
+if grep -rn --include='*.swift' -E '^[[:space:]]*//' App Tests || grep -rn --include='*.js' -E '^[[:space:]]*//' App/Resources Tests/Fixtures; then
   echo "remove these comments: CLAUDE.md asks for code that explains itself" >&2
   exit 1
 fi
@@ -34,6 +34,9 @@ npx --no-install eslint
 
 step "triage tool tests"
 python3 -I -m unittest discover -s tools/webcompat
+
+step "report intake tests (worker)"
+node --test deploy/test/
 
 step "type check (Mac Catalyst SDK)"
 scripts/typecheck.sh

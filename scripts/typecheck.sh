@@ -28,12 +28,12 @@ run() {
 }
 
 APP=()
-while IFS= read -r -d '' f; do APP+=("$f"); done < <(git ls-files -co --exclude-standard -z 'App/*.swift')
+while IFS= read -r -d '' f; do APP+=("$f"); done < <(find App -name '*.swift' -print0 | sort -z)
 TESTS=()
-while IFS= read -r -d '' f; do TESTS+=("$f"); done < <(git ls-files -co --exclude-standard -z 'Tests/*.swift')
+while IFS= read -r -d '' f; do TESTS+=("$f"); done < <(find Tests -name '*.swift' -print0 | sort -z)
 
-run "app type check" swiftc "${FLAGS[@]}" -module-name WinBrowse -enable-testing -emit-module -emit-module-path "$WORK/WinBrowse.swiftmodule" "${APP[@]}"
+run "app type check" swiftc "${FLAGS[@]}" -module-name WinBrowse -enable-testing -emit-module -emit-module-path "$WORK/WinBrowse.swiftmodule" ${APP[@]+"${APP[@]}"}
 PLUGINS=()
 MACROS="$(dirname "$(dirname "$(xcrun --find swiftc)")")/lib/swift/host/plugins/testing/libTestingMacros.dylib"
 [ -f "$MACROS" ] && PLUGINS=(-load-plugin-library "$MACROS")
-run "test type check" swiftc -typecheck "${FLAGS[@]}" ${PLUGINS[@]+"${PLUGINS[@]}"} -I "$WORK" -F "$TESTING" -module-name WinBrowseTests "${TESTS[@]}"
+run "test type check" swiftc -typecheck "${FLAGS[@]}" ${PLUGINS[@]+"${PLUGINS[@]}"} -I "$WORK" -F "$TESTING" -module-name WinBrowseTests ${TESTS[@]+"${TESTS[@]}"}

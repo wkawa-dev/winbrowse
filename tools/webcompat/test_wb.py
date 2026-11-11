@@ -149,5 +149,10 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(opened, ["http://localhost:8901/page.html"])
 
 
+class QueryEncodingTests(unittest.TestCase):
+    def test_spaces_are_percent_encoded_because_the_app_keeps_plus_signs(self):
+        self.assertEqual(wb.query_string({"js": "a === 'b'"}), "js=a%20%3D%3D%3D%20%27b%27")
+
+
 if __name__ == "__main__":
     unittest.main()

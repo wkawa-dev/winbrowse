@@ -24,6 +24,10 @@ class AppError(Exception):
     pass
 
 
+def query_string(query):
+    return urllib.parse.urlencode(query, quote_via=urllib.parse.quote)
+
+
 class App:
     def __init__(self, port=8899, token_file="/tmp/winbrowse-debug-token", timeout=30):
         self.base = f"http://localhost:{port}"
@@ -35,7 +39,7 @@ class App:
             token = pathlib.Path(self.token_file).read_text().strip()
         except OSError as e:
             raise AppError(f"no debug token at {self.token_file}: start a Debug build of the app first") from e
-        url = self.base + path + ("?" + urllib.parse.urlencode(query) if query else "")
+        url = self.base + path + ("?" + query_string(query) if query else "")
         request = urllib.request.Request(url, data=body.encode() if body is not None else None, headers={"X-Debug-Token": token})
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:

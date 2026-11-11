@@ -22,8 +22,22 @@ env:
   VERSION_PATCH_OFFSET: "0"
 
 jobs:
+  check:
+    name: Lint and test
+    runs-on: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check
+        run: scripts/check.sh
+
+      - name: Test log
+        if: failure()
+        run: tail -200 build/test.log || true
+
   build:
     name: Build unsigned IPA
+    needs: check
     runs-on: ios
     steps:
       - uses: actions/checkout@v4

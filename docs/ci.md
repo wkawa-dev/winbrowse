@@ -11,11 +11,13 @@ There is no GitHub CI. The Mac runner also handles manual builds over SSH.
 
 ## Pipeline
 
-| Trigger | `build` | `publish` |
-|---|---|---|
-| push to `main` | unsigned IPA, uploaded as artifact `winbrowse-ipa` (30 days) | skipped |
-| tag `v*` | same | deploys to the Cloudflare Worker (SideStore source) |
-| manual dispatch | runs | only if *publish* is ticked |
+| Trigger | `check` | `build` | `publish` |
+|---|---|---|---|
+| push to `main` | lint and tests | unsigned IPA, uploaded as artifact `winbrowse-ipa` (30 days) | skipped |
+| tag `v*` | same | same | deploys to the Cloudflare Worker (SideStore source) |
+| manual dispatch | runs | runs | only if *publish* is ticked |
+
+`check` runs `scripts/check.sh`: the linters, then the Debug build and the test target on an iPhone simulator. `build` starts only when `check` passes. Run the same check by hand from any Mac with `scripts/mac.sh scripts/check.sh`, which copies the working tree to the build Mac, runs it there and cleans up. Set `WINBROWSE_SIM` to a simulator UDID to choose the simulator.
 
 Extensions are **not** refreshed in CI; the committed `App/Extensions-bundle` is what ships. Refresh locally with
 `scripts/update-extensions.sh` and commit (it re-applies `scripts/patch-xadblock.py`).

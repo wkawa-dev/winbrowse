@@ -1,0 +1,17 @@
+<!doctype html>
+<title>Creates a passkey, signs in with it and sets window.result</title>
+<script>
+  window.result = 'running';
+  (async () => {
+    try {
+      const created = await navigator.credentials.create({ publicKey: {
+        rp: { name: 'WinBrowse fixture' }, user: { id: new Uint8Array([7, 7]), name: 'fixture', displayName: 'Fixture' },
+        challenge: crypto.getRandomValues(new Uint8Array(16)), pubKeyCredParams: [{ type: 'public-key', alg: -7 }] } });
+      const signedIn = await navigator.credentials.get({ publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(16)), allowCredentials: [{ type: 'public-key', id: created.rawId }] } });
+      window.result = signedIn.id === created.id && signedIn.response.signature.byteLength > 0 ? 'ok' : 'mismatch';
+    } catch (e) {
+      window.result = 'failed: ' + e.name + ' ' + e.message;
+    }
+  })();
+</script>

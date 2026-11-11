@@ -35,6 +35,16 @@ jobs:
         if: failure()
         run: tail -200 build/test.log || true
 
+  e2e:
+    name: End-to-end cases in the simulator
+    needs: check
+    runs-on: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run cases
+        run: scripts/e2e.sh
+
   build:
     name: Build unsigned IPA
     needs: check

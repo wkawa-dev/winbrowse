@@ -23,6 +23,9 @@ step "eslint"
 [ -d node_modules ] || npm ci --silent --no-audit --no-fund
 npx --no-install eslint
 
+step "triage tool tests"
+python3 -I -m unittest discover -s tools/webcompat
+
 step "type check (Mac Catalyst SDK)"
 scripts/typecheck.sh
 

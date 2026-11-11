@@ -1,0 +1,7 @@
+{
+  "name": "passkey create and sign-in on a local origin",
+  "url": "{fixtures}/passkey.html",
+  "before": ["/passkeys?auto=1&clear=1"],
+  "expect": "window.result === 'ok'",
+  "timeout": 15
+}

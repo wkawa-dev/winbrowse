@@ -22,6 +22,9 @@ if git grep -n -E '^\s*//' -- 'App/*.swift' 'App/Resources/*.js' 'Tests/*.swift'
   exit 1
 fi
 
+step "vendored extensions"
+python3 -I scripts/vendor-hash.py --check
+
 step "swiftformat"
 swiftformat --lint --quiet .
 

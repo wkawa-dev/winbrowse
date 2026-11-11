@@ -1,0 +1,18 @@
+{
+  "sponsorblock": {
+    "sha256": "ba4b4f0fb17ecfeccfe5a39b0cd2e2c22a9608d1be7d4f8f13c5b17791133f10",
+    "version": "6.1.6"
+  },
+  "ubo": {
+    "sha256": "cf891c756612cc6a2d0c05d6baae744d503b556e715b87c185f0191d57ebf79c",
+    "version": "2026.1103.1743"
+  },
+  "xadblock": {
+    "sha256": "0fdeda337ec35e9ee3f3bf773686a175eaa9e0309cc5f073e1db398a8f65ebaa",
+    "version": "1.4.4"
+  },
+  "xposed": {
+    "sha256": "1b4a2717f9485691c8339ee73e1cba6f8331e27c102b64356cf9975e376cc974",
+    "version": "4.4.0"
+  }
+}

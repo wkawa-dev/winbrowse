@@ -31,6 +31,8 @@ for f in css-api isolated-api css-generic css-procedural-api; do cp "$TMP/ubol/j
 cp "$TMP/ubol/LICENSE.txt" "$OUT/ubo/"
 cp -R "$TMP/ubol/img" "$OUT/ubo/img"
 echo "$TAG" > "$OUT/ubo/VERSION"
+scripts/trim-extensions.sh
 echo "ubo $TAG"
 
 echo "public suffix list: pinned in scripts/fetch-public-suffix-list.sh; to update, set COMMIT to the newest commit of github.com/publicsuffix/list and SHA256 to the file's new checksum"
+python3 -I scripts/vendor-hash.py

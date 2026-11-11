@@ -14,7 +14,7 @@ enum PasskeyCodec {
     static func registrationAuthData(rpId: String, credentialId: Data, publicKey: P256.Signing.PublicKey) -> Data {
         var out = rpIdHash(rpId) + Data([flagUserPresent | flagUserVerified | flagAttestedCredentialData, 0, 0, 0, 0])
         out += Data(count: 16) // AAGUID: all zeros for "none" attestation
-        out += Data([UInt8(credentialId.count >> 8), UInt8(credentialId.count & 0xff)])
+        out += Data([UInt8(credentialId.count >> 8), UInt8(credentialId.count & 0xFF)])
         out += credentialId
         out += coseKey(publicKey)
         return out
@@ -71,7 +71,7 @@ enum PasskeyCodec {
     static func cborBytes(_ d: Data) -> Data {
         if d.count < 24 { return Data([0x40 | UInt8(d.count)]) + d }
         if d.count < 256 { return Data([0x58, UInt8(d.count)]) + d }
-        return Data([0x59, UInt8(d.count >> 8), UInt8(d.count & 0xff)]) + d
+        return Data([0x59, UInt8(d.count >> 8), UInt8(d.count & 0xFF)]) + d
     }
 }
 

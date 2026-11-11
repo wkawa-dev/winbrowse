@@ -14,12 +14,12 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
     static let shared = Passkeys()
 
     struct Credential: Codable, Identifiable, Hashable {
-        var id: String            // credential id, base64url
+        var id: String // credential id, base64url
         var rpId: String
-        var userHandle: String    // base64url
+        var userHandle: String // base64url
         var userName: String
         var displayName: String
-        var key: Data             // P-256 private key, raw representation
+        var key: Data // P-256 private key, raw representation
         var created: Date
         var lastUsed: Date?
     }
@@ -38,9 +38,7 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         credentials = Self.loadAll()
     }
 
-    static let script: String = {
-        Bundle.main.url(forResource: "passkeys", withExtension: "js").flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
-    }()
+    static let script: String = Bundle.main.url(forResource: "passkeys", withExtension: "js").flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
 
     func install(into ucc: WKUserContentController) {
         ucc.removeScriptMessageHandler(forName: "winpasskey", contentWorld: .page)
@@ -132,7 +130,7 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         guard await confirm(key: requestKey, title: "Save a passkey?",
                             message: "Create a passkey for \(shown.isEmpty ? "your account" : shown) on \(rpId). It is stored in WinBrowse and unlocked with \(Self.biometryName).",
                             action: "Continue"),
-              await verifyUser(reason: "Create a passkey for \(rpId)") else {
+            await verifyUser(reason: "Create a passkey for \(rpId)") else {
             return Self.err("NotAllowedError", "The operation either timed out or was not allowed.")
         }
 
@@ -221,7 +219,7 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         var error: NSError?
         // No passcode set (or simulator): the explicit confirmation above is the only gate available.
         guard c.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else { return true }
-        return (try? await c.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
+        return await (try? c.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
     }
 
     private func confirm(key: String, title: String, message: String, action: String) async -> Bool {

@@ -160,7 +160,7 @@ enum RuleConverter {
 
 extension String {
     var djb2: String {
-        var h: UInt64 = 5381
+        var h: UInt64 = 5_381
         for b in utf8 { h = (h &* 33) ^ UInt64(b) }
         return String(h, radix: 36)
     }

@@ -23,7 +23,7 @@ final class DebugServer {
         return t
     }()
 
-    func start(port: UInt16 = 8899) {
+    func start(port: UInt16 = 8_899) {
         let params = NWParameters.tcp
         params.requiredInterfaceType = .loopback
         guard listener == nil, let l = try? NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!) else { return }

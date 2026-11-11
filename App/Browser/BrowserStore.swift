@@ -233,7 +233,7 @@ final class BrowserHistory: ObservableObject {
         } else {
             entries.insert(Entry(url: s, title: title, date: Date(), visits: 1), at: 0)
         }
-        if entries.count > 3000 { entries.removeLast(entries.count - 3000) }
+        if entries.count > 3_000 { entries.removeLast(entries.count - 3_000) }
         save()
     }
 

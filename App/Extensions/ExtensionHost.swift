@@ -170,7 +170,7 @@ final class ExtensionHost: NSObject {
             ucc.removeScriptMessageHandler(forName: "winext", contentWorld: e.world)
         }
         ucc.removeScriptMessageHandler(forName: "winext", contentWorld: .page)
-        ucc.addScriptMessageHandler(self, contentWorld: .page, name: "winext")   // winext:// pages opened in tabs
+        ucc.addScriptMessageHandler(self, contentWorld: .page, name: "winext") // winext:// pages opened in tabs
         for e in enabledExtensions {
             ucc.addScriptMessageHandler(self, contentWorld: e.world, name: "winext")
             for s in userScripts(for: e) { ucc.addUserScript(s) }
@@ -424,7 +424,6 @@ extension ExtensionHost: WKScriptMessageHandlerWithReply {
                 frames[ObjectIdentifier(w)] = list
             }
             return nil
-
         case "storage.get":
             let area = data["area"] as? String ?? "local"
             return jsonString(storage.get(id, area, keys: data["keys"] as? [String]))
@@ -440,18 +439,15 @@ extension ExtensionHost: WKScriptMessageHandlerWithReply {
             let area = data["area"] as? String ?? "local"
             broadcastStorage(id, area: area, changes: storage.clear(id, area))
             return nil
-
         case "runtime.sendMessage":
             let payload: [String: Any] = ["msg": data["msg"] ?? NSNull(), "sender": senderJSON(ep)]
             var targets = extensionEndpoints(id, excluding: ep.webView)
             if case .background = ep { targets.removeAll { if case .background = $0 { return true }; return false } }
             return await firstHandled(targets, payload)
-
         case "tabs.sendMessage":
             guard let tid = data["tabId"] as? Int, let w = tabs?.extWebView(tabId: tid) else { return "{\"handled\":false}" }
             let payload: [String: Any] = ["msg": data["msg"] ?? NSNull(), "sender": senderJSON(ep)]
             return await firstHandled(contentEndpoints(id, tab: w, frameId: data["frameId"] as? Int), payload)
-
         case "runtime.connect", "tabs.connect":
             guard let pid = data["portId"] as? String else { return nil }
             var targets: [Endpoint]
@@ -470,7 +466,6 @@ extension ExtensionHost: WKScriptMessageHandlerWithReply {
             if accepted.isEmpty { return "{\"connected\":false}" }
             ports[pid] = Port(a: ep, b: accepted)
             return "{\"connected\":true}"
-
         case "port.post":
             guard let pid = data["portId"] as? String, let p = ports[pid] else { return nil }
             let payload: [String: Any] = ["portId": pid, "msg": data["msg"] ?? NSNull()]
@@ -483,7 +478,6 @@ extension ExtensionHost: WKScriptMessageHandlerWithReply {
             let fromA = sameEndpoint(p.a, ep)
             for t in fromA ? p.b : [p.a] { _ = await deliver(t, "portDisconnect", ["portId": pid]) }
             return nil
-
         case "tabs.query":
             return jsonString(queryTabs(data, from: ep).map(\.json))
         case "tabs.get":
@@ -508,7 +502,6 @@ extension ExtensionHost: WKScriptMessageHandlerWithReply {
             let tid = data["tabId"] as? Int ?? tabs?.extTabs.first(where: \.active)?.id ?? -1
             tabs?.extReloadTab(tabId: tid)
             return nil
-
         case "scripting.execute":
             return await executeScript(ext: id, data: data, from: ep)
         case "scripting.css":
@@ -518,14 +511,12 @@ extension ExtensionHost: WKScriptMessageHandlerWithReply {
             let js = "(()=>{const s=document.createElement('style');s.textContent=\(jsString(css));(document.head||document.documentElement).appendChild(s)})()"
             _ = try? await w.evaluateJavaScript(js, in: nil, contentWorld: e.world)
             return nil
-
         case "runtime.openOptionsPage":
             if let e = ext(id), let o = e.options { tabs?.extPresent(ext: e, page: o) }
             return nil
         case "action.openPopup":
             if let e = ext(id), let p = e.popup { tabs?.extPresent(ext: e, page: p) }
             return nil
-
         case "fetch":
             return await NativeFetch.perform(data, userAgent: userAgent, ext: ext(id))
         case "crypto.digest":

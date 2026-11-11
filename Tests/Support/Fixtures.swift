@@ -22,6 +22,6 @@ enum Fixtures {
     static func golden(_ value: Any, _ path: String) throws -> (actual: String, expected: String) {
         let actual = try canonical(value)
         if recording { try Data(actual.utf8).write(to: url(path)) }
-        return (actual, try string(path))
+        return try (actual, string(path))
     }
 }

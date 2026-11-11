@@ -76,12 +76,14 @@ extension AnyTransition {
     static var turnstile: AnyTransition {
         .asymmetric(
             insertion: .modifier(active: TurnstileModifier(angle: -75, opacity: 0), identity: TurnstileModifier(angle: 0, opacity: 1)),
-            removal: .modifier(active: TurnstileModifier(angle: 75, opacity: 0), identity: TurnstileModifier(angle: 0, opacity: 1)))
+            removal: .modifier(active: TurnstileModifier(angle: 75, opacity: 0), identity: TurnstileModifier(angle: 0, opacity: 1))
+        )
     }
     static var turnstileBack: AnyTransition {
         .asymmetric(
             insertion: .modifier(active: TurnstileModifier(angle: 75, opacity: 0), identity: TurnstileModifier(angle: 0, opacity: 1)),
-            removal: .modifier(active: TurnstileModifier(angle: -75, opacity: 0), identity: TurnstileModifier(angle: 0, opacity: 1)))
+            removal: .modifier(active: TurnstileModifier(angle: -75, opacity: 0), identity: TurnstileModifier(angle: 0, opacity: 1))
+        )
     }
 }
 
@@ -89,7 +91,7 @@ extension AnyTransition {
 struct RoundIcon: View {
     @EnvironmentObject var theme: Theme
     let system: String
-    var label: String? = nil
+    var label: String?
     var showLabel = false
     var size: CGFloat = 40
     var filled = false
@@ -143,13 +145,13 @@ struct PressableButton<Label: View>: View {
             if suppress { suppress = false; return }
             action()
         } label: { label }
-        .buttonStyle(.tilt)
-        .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
-            guard let longPress else { return }
-            suppress = true
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            longPress()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { suppress = false }
-        })
+            .buttonStyle(.tilt)
+            .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+                guard let longPress else { return }
+                suppress = true
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                longPress()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { suppress = false }
+            })
     }
 }

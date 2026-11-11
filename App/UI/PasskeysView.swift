@@ -17,7 +17,7 @@ struct PasskeysView: View {
                         HStack {
                             MetroRow(title: c.rpId, value: [c.userName.isEmpty ? c.displayName : c.userName,
                                                             c.lastUsed.map { "used \($0.formatted(.relative(presentation: .named)))" } ?? "created \(c.created.formatted(date: .abbreviated, time: .omitted))"]
-                                .filter { !$0.isEmpty }.joined(separator: " · "))
+                                    .filter { !$0.isEmpty }.joined(separator: " · "))
                             Button { passkeys.delete(c) } label: {
                                 Image(systemName: "trash").foregroundStyle(theme.fg).frame(width: 40, height: 40).contentShape(Rectangle())
                             }

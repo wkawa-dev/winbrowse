@@ -130,7 +130,7 @@ final class ContentBlocker: ObservableObject {
                     let mid = slice.startIndex + slice.count / 2
                     pending.insert(contentsOf: [slice[slice.startIndex..<mid], slice[mid..<slice.endIndex]], at: 0)
                 } else if slice.count <= 1 && withAllows && out.isEmpty {
-                    withAllows = false   // the allow rules themselves don't compile: carry on without them
+                    withAllows = false // the allow rules themselves don't compile: carry on without them
                     pending = stride(from: 0, to: blocks.count, by: per).map { blocks[$0..<min(blocks.count, $0 + per)] }
                 } else if slice.count > 1 {
                     pending.insert(contentsOf: slice.map { [$0][...] }, at: 0)

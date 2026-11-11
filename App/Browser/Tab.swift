@@ -12,7 +12,7 @@ final class Tab: NSObject, ObservableObject, Identifiable {
     @Published var canGoBack = false
     @Published var canGoForward = false
     @Published var thumbnail: UIImage?
-    @Published var blockedURL: URL?          // main-frame load stopped by uBO (strict blocking)
+    @Published var blockedURL: URL? // main-frame load stopped by uBO (strict blocking)
     @Published var desktop = false
     @Published var filteredContent = true
     @Published var hasWebView = false

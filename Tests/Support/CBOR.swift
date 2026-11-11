@@ -19,12 +19,12 @@ struct CBORReader {
 
     mutating func next() throws -> CBOR {
         let head = try take(1)[0]
-        let n = try length(head & 0x1f)
+        let n = try length(head & 0x1F)
         switch head >> 5 {
         case 0: return .int(n)
         case 1: return .int(-1 - n)
-        case 2: return .bytes(Data(try take(n)))
-        case 3: return .text(String(decoding: try take(n), as: UTF8.self))
+        case 2: return try .bytes(Data(take(n)))
+        case 3: return try .text(String(decoding: take(n), as: UTF8.self))
         case 5:
             var m: [CBOR: CBOR] = [:]
             for _ in 0..<n {

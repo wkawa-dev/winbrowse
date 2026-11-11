@@ -17,7 +17,7 @@ final class UBOScripts: NSObject {
     private struct Specific {
         var selectors: [String]
         var selectorLists: [[Int]]
-        var byHost: [String: Int]          // hostname or entity → selectorLists index
+        var byHost: [String: Int] // hostname or entity → selectorLists index
         var regexes: [(String, NSRegularExpression, Int)]
     }
     private var specific: [String: Specific] = [:]

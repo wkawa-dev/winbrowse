@@ -27,7 +27,7 @@ struct MetroButton: View {
 /// The Windows Phone indeterminate progress: dots sliding across.
 struct MetroDots: View {
     @EnvironmentObject var theme: Theme
-    var color: Color? = nil
+    var color: Color?
 
     var body: some View {
         TimelineView(.animation) { tl in
@@ -51,7 +51,7 @@ struct MetroDots: View {
 struct MetroToggle: View {
     @EnvironmentObject var theme: Theme
     let title: String
-    var detail: String? = nil
+    var detail: String?
     @Binding var isOn: Bool
     var body: some View {
         Button { withAnimation(.easeOut(duration: 0.15)) { isOn.toggle() } } label: {
@@ -91,7 +91,7 @@ struct MetroGroup<C: View>: View {
 struct MetroRow: View {
     @EnvironmentObject var theme: Theme
     let title: String
-    var value: String? = nil
+    var value: String?
     var accent = false
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -107,8 +107,8 @@ struct MetroRow: View {
 struct MetroMenuItem: View {
     @EnvironmentObject var theme: Theme
     let title: String
-    var detail: String? = nil
-    var icon: String? = nil
+    var detail: String?
+    var icon: String?
     var size: CGFloat = 21
     let action: () -> Void
     var body: some View {
@@ -204,7 +204,8 @@ extension AnyTransition {
     static func metroPeel(_ hinge: MenuHinge) -> AnyTransition {
         .asymmetric(
             insertion: .modifier(active: PeelModifier(progress: 0, hinge: hinge), identity: PeelModifier(progress: 1, hinge: hinge)),
-            removal: .modifier(active: PeelModifier(progress: 0, hinge: hinge), identity: PeelModifier(progress: 1, hinge: hinge)))
+            removal: .modifier(active: PeelModifier(progress: 0, hinge: hinge), identity: PeelModifier(progress: 1, hinge: hinge))
+        )
     }
 }
 

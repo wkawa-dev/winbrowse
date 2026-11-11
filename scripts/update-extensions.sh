@@ -9,7 +9,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 crx() { # name id
   curl -fsSL -o "$TMP/$1.crx" "https://clients2.google.com/service/update2/crx?response=redirect&prodversion=140.0&acceptformat=crx2,crx3&x=id%3D$2%26uc"
-  rm -rf "$OUT/$1"; mkdir -p "$OUT/$1"
+  rm -rf "${OUT:?}/${1:?}"; mkdir -p "$OUT/$1"
   unzip -qo "$TMP/$1.crx" -d "$OUT/$1" 2>/dev/null || true   # CRX3 header makes unzip warn; the payload extracts fine
   rm -rf "$OUT/$1/_metadata"
   [ -f "$OUT/$1/manifest.json" ] || { echo "failed to unpack $1"; exit 1; }
@@ -32,3 +32,5 @@ cp "$TMP/ubol/LICENSE.txt" "$OUT/ubo/"
 cp -R "$TMP/ubol/img" "$OUT/ubo/img"
 echo "$TAG" > "$OUT/ubo/VERSION"
 echo "ubo $TAG"
+
+echo "public suffix list: pinned in scripts/fetch-public-suffix-list.sh; to update, set COMMIT to the newest commit of github.com/publicsuffix/list and SHA256 to the file's new checksum"

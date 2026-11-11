@@ -89,16 +89,10 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
         originString(scheme: u.scheme ?? "", host: u.host ?? "", port: u.port ?? 0)
     }
 
-    private static func validRP(_ rpId: String, host: String) -> Bool {
-        let rp = rpId.lowercased()
-        guard rp == host || host.hasSuffix("." + rp) else { return false }
-        return rp.contains(".") || rp == "localhost"
-    }
-
     private func create(_ b: [String: Any], host: String, origin: String, key requestKey: String) async -> [String: Any] {
         let rp = b["rp"] as? [String: Any] ?? [:]
         let rpId = ((rp["id"] as? String) ?? host).lowercased()
-        guard Self.validRP(rpId, host: host) else { return Self.err("SecurityError", "The relying party ID is not a registrable domain suffix of the origin.") }
+        guard PublicSuffixList.shared.permits(rpId: rpId, host: host) else { return Self.err("SecurityError", "The relying party ID is not a registrable domain suffix of the origin.") }
         let algs = b["algs"] as? [Int] ?? []
         guard algs.isEmpty || algs.contains(-7) else { return Self.err("NotSupportedError", "Only ES256 passkeys are supported.") }
         if (b["attachment"] as? String) == "cross-platform" { return Self.err("NotAllowedError", "Security keys aren't supported in WinBrowse.") }
@@ -146,7 +140,7 @@ final class Passkeys: NSObject, ObservableObject, WKScriptMessageHandlerWithRepl
 
     private func get(_ b: [String: Any], host: String, origin: String, key requestKey: String, webView: WKWebView?) async -> [String: Any] {
         let rpId = ((b["rpId"] as? String) ?? host).lowercased()
-        guard Self.validRP(rpId, host: host) else { return Self.err("SecurityError", "The relying party ID is not a registrable domain suffix of the origin.") }
+        guard PublicSuffixList.shared.permits(rpId: rpId, host: host) else { return Self.err("SecurityError", "The relying party ID is not a registrable domain suffix of the origin.") }
         guard let challenge = b["challenge"] as? String else { return Self.err("TypeError", "Missing challenge.") }
         let allow = Set((b["allow"] as? [[String: Any]] ?? []).compactMap { $0["id"] as? String })
         let conditional = b["conditional"] as? Bool ?? false

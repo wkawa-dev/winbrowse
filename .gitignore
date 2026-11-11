@@ -51,3 +51,7 @@ WinBrowse.xcodeproj/
 App/Info.plist
 
 node_modules/
+
+# Downloaded and checksum-verified by scripts/fetch-public-suffix-list.sh
+App/Resources/public_suffix_list.dat
+Tests/Fixtures/test_psl.txt

@@ -19,10 +19,20 @@ targets:
     platform: iOS
     scheme:
       testTargets: [WinBrowseTests]
+    preBuildScripts:
+      - name: Fetch the Public Suffix List
+        script: scripts/fetch-public-suffix-list.sh
+        basedOnDependencyAnalysis: false
+        outputFiles:
+          - $(SRCROOT)/App/Resources/public_suffix_list.dat
     sources:
       - path: App
         excludes:
           - Extensions-bundle
+          - Resources/public_suffix_list.dat
+      - path: App/Resources/public_suffix_list.dat
+        optional: true
+        buildPhase: resources
       - path: App/Extensions-bundle
         type: folder
         buildPhase: resources

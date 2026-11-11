@@ -1,7 +1,6 @@
 import Foundation
 import WebKit
 
-/// One unpacked Chrome extension shipped inside the app bundle (App/Extensions-bundle/<id>).
 struct WebExtension: Identifiable {
     struct ContentScript {
         var matches: [String]
@@ -30,7 +29,6 @@ struct WebExtension: Identifiable {
     var world: WKContentWorld { WKContentWorld.world(name: "winext.\(id)") }
     var baseURL: String { "winext://\(id)/" }
 
-    /// Display name with __MSG_x__ resolved.
     var name: String { localize(manifest["short_name"] as? String ?? manifest["name"] as? String ?? id, preferShort: true) }
     var fullName: String { localize(manifest["name"] as? String ?? id) }
     var summary: String { localize(manifest["description"] as? String ?? "") }
@@ -53,7 +51,6 @@ struct WebExtension: Identifiable {
         guard let data = try? Data(contentsOf: dir.appendingPathComponent("manifest.json")),
               let m = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
 
-        // _locales: default_locale first, then the UI language on top.
         var messages: [String: Any] = [:]
         func merge(_ locale: String) {
             let u = dir.appendingPathComponent("_locales/\(locale)/messages.json")
@@ -95,57 +92,15 @@ struct WebExtension: Identifiable {
                             homepage: m["homepage_url"] as? String)
     }
 
-    /// Whether `url` falls under the manifest's `host_permissions` (MV3) or URL-shaped `permissions` (MV2).
-    func canAccess(_ url: URL) -> Bool {
-        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return false }
-        let patterns = ((manifest["host_permissions"] as? [String]) ?? [])
-            + ((manifest["permissions"] as? [Any]) ?? []).compactMap { $0 as? String }.filter { $0 == "<all_urls>" || $0.contains("://") }
-        let href = url.absoluteString
-        return patterns.contains { p in
-            href.range(of: MatchPattern.regex(p), options: .regularExpression) != nil
-        }
+    var hostPermissions: [String] {
+        (manifest["host_permissions"] as? [String] ?? [])
+            + (manifest["permissions"] as? [Any] ?? []).compactMap { $0 as? String }.filter { $0 == "<all_urls>" || $0.contains("://") }
     }
+
+    func canAccess(_ url: URL) -> Bool { MatchPattern.permits(hostPermissions, url) }
 
     func file(_ path: String) -> String {
         let p = path.trimmingCharacters(in: CharacterSet(charactersIn: "/")).replacingOccurrences(of: "./", with: "")
         return (try? String(contentsOf: dir.appendingPathComponent(p), encoding: .utf8)) ?? ""
-    }
-}
-
-/// Chrome match patterns → JS regex sources (https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns).
-enum MatchPattern {
-    static func regex(_ pattern: String) -> String {
-        if pattern == "<all_urls>" { return "^(https?|wss?|file|ftp)://" }
-        guard let r = pattern.range(of: "://") else { return "^$" }
-        let scheme = String(pattern[..<r.lowerBound])
-        let rest = pattern[r.upperBound...]
-        let slash = rest.firstIndex(of: "/") ?? rest.endIndex
-        let host = String(rest[..<slash])
-        let path = String(rest[slash...])
-        var s = "^"
-        s += scheme == "*" ? "https?" : esc(scheme)
-        s += "://"
-        if host == "*" { s += "[^/]*" }
-        else if host.hasPrefix("*.") { s += "([^/]*\\.)?" + esc(String(host.dropFirst(2))) + "(:[0-9]+)?" }
-        else { s += esc(host) + "(:[0-9]+)?" }
-        s += path.isEmpty ? "/.*" : path.split(separator: "*", omittingEmptySubsequences: false)
-            .map { esc(String($0)) }.joined(separator: ".*")
-        return s + "$"
-    }
-
-    private static func esc(_ s: String) -> String {
-        var o = ""
-        for c in s { if "\\^$.|?*+()[]{}".contains(c) { o.append("\\") }; o.append(c) }
-        return o
-    }
-
-    /// A JS expression that's true when `location.href` matches.
-    static func jsGuard(_ matches: [String], exclude: [String] = []) -> String {
-        func arr(_ ps: [String]) -> String {
-            "[" + ps.map { "/" + regex($0).replacingOccurrences(of: "/", with: "\\/") + "/" }.joined(separator: ",") + "]"
-        }
-        let inc = "\(arr(matches)).some(r=>r.test(location.href))"
-        if exclude.isEmpty { return "(\(inc))" }
-        return "(\(inc)&&!\(arr(exclude)).some(r=>r.test(location.href)))"
     }
 }

@@ -1,0 +1,14 @@
+--swiftversion 5.9
+--exclude App/Extensions-bundle,build,dist,deploy,node_modules,WinBrowse.xcodeproj
+--indent 4
+--maxwidth none
+--wraparguments preserve
+--wrapparameters preserve
+--wrapcollections preserve
+--stripunusedargs closure-only
+--self remove
+--importgrouping alpha
+--disable wrapMultilineStatementBraces,redundantReturn,blankLinesAroundMark,preferKeyPath,wrapSingleLineComments,docComments,redundantType,trailingCommas,andOperator,unusedArguments,hoistPatternLet,blockComments,fileHeader,redundantSelf,opaqueGenericParameters,preferForLoop,wrapConditionalBodies,wrapLoopBodies,wrapSwitchCases,wrapEnumCases,blankLinesBetweenScopes,redundantPublic,redundantInternal,wrapIfStatementBodies,wrapFunctionBodies,wrapPropertyBodies,wrapIfExpressionBodies,conditionalAssignment,noForceUnwrapInTests,initCoderUnavailable
+--ifdef no-indent
+--ranges no-space
+--decimalgrouping 3,4

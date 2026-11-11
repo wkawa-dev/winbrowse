@@ -5,7 +5,7 @@ WinBrowse builds on a self-hosted CI server, reached over a private network. The
 | | |
 |---|---|
 | Workflow | `.forgejo/workflows/ios.yml` |
-| Runner label | `ios` (host mode, Xcode 27.2 + xcodegen on the Mac runner) |
+| Runner label | `ios` (host mode, Xcode 27.2, xcodegen, SwiftFormat and Node on the Mac runner) |
 
 There is no GitHub CI. The Mac runner also handles manual builds over SSH.
 

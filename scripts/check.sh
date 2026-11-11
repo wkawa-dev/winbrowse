@@ -11,9 +11,20 @@ case "${1:-}" in
 esac
 
 step() { printf '\n== %s\n' "$*" >&2; }
+need() { command -v "$1" >/dev/null || { echo "$1 is required: $2" >&2; exit 1; }; }
+
+need swiftformat "brew install swiftformat"
+need npm "brew install node"
+
+step "swiftformat"
+swiftformat --lint --quiet .
+
+step "eslint"
+[ -d node_modules ] || npm ci --silent --no-audit --no-fund
+npx --no-install eslint
 
 if [ -z "$LINT_ONLY" ]; then
-  command -v xcodegen >/dev/null || { echo "xcodegen is required: brew install xcodegen" >&2; exit 1; }
+  need xcodegen "brew install xcodegen"
   step "xcodegen"
   xcodegen generate -q
 

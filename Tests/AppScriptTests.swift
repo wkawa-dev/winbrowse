@@ -24,6 +24,7 @@ struct AppScriptTests {
             ucc.addScriptMessageHandler(native, contentWorld: AppScripts.world, name: "winpasskey")
             ucc.add(native, contentWorld: AppScripts.world, name: "winmedia")
             ucc.add(native, contentWorld: AppScripts.world, name: ScriptLog.name)
+            ucc.add(native, contentWorld: AppScripts.world, name: PageErrors.name)
         }
     }
 
@@ -138,5 +139,21 @@ struct AppScriptTests {
         #expect(result["keepsURL"] as? Bool == true)
         #expect(result["xhr"] as? String == "tweet-1")
         #expect(result["other"] as? String == "tweet-1 promoted-tweet-2 tweet-3")
+    }
+
+    @Test func pageErrorsReachTheAppWithoutTouchingThePageWorld() async throws {
+        let page = appPage([])
+        try await page.load(html: Self.blank)
+
+        try await page.eval("""
+        setTimeout(() => { throw new Error('boom'); });
+        Promise.reject(new Error('nope'));
+        const img = document.createElement('img'); img.src = 'https://unreachable.invalid/x.png'; document.body.appendChild(img);
+        """)
+        try await eventually { native.messages(PageErrors.name).count >= 3 }
+        let kinds = Set(native.messages(PageErrors.name).compactMap { $0.body["kind"] as? String })
+        let messages = native.messages(PageErrors.name).compactMap { $0.body["message"] as? String }.joined(separator: " | ")
+        #expect(kinds == ["error", "rejection", "resource"], "\(messages)")
+        #expect(messages.contains("boom") && messages.contains("nope"), "\(messages)")
     }
 }

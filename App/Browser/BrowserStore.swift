@@ -49,7 +49,7 @@ final class BrowserStore: ObservableObject {
 
     func close(_ t: Tab) {
         guard let i = tabs.firstIndex(where: { $0 === t }) else { return }
-        if let w = t.webView { ExtensionHost.shared.tabNavigated(w); w.removeFromSuperview() }
+        if let w = t.webView { ExtensionHost.shared.tabNavigated(w); PageErrors.shared.forget(w); w.removeFromSuperview() }
         tabs.remove(at: i)
         ExtensionHost.shared.tabRemoved(t.id)
         if activeId == t.id {

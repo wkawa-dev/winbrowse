@@ -18,6 +18,8 @@ enum AppScripts {
     static func install(into ucc: WKUserContentController, modules: Modules) {
         ucc.removeScriptMessageHandler(forName: ScriptLog.name, contentWorld: world)
         ucc.add(log, contentWorld: world, name: ScriptLog.name)
+        ucc.removeScriptMessageHandler(forName: PageErrors.name, contentWorld: world)
+        ucc.add(PageErrors.shared, contentWorld: world, name: PageErrors.name)
         ucc.addUserScript(WKUserScript(source: pageSource(modules, channel: channel, load: bundled), injectionTime: .atDocumentStart,
                                        forMainFrameOnly: false, in: .page))
         ucc.addUserScript(WKUserScript(source: isolatedSource(modules, channel: channel, load: bundled), injectionTime: .atDocumentStart,
@@ -33,7 +35,7 @@ enum AppScripts {
     }
 
     nonisolated static func isolatedSource(_ modules: Modules, channel: String, load: (String) -> String) -> String {
-        var names = ["isolated-bridge"]
+        var names = ["isolated-bridge", "isolated-errors"]
         if modules.contains(.media) { names.append("isolated-media") }
         let calls = names.map { name in
             "try{(\(load(name)))(c)}catch(e){window.webkit.messageHandlers[\(jsString(ScriptLog.name))].postMessage({module:\(jsString(name)),error:String(e&&e.stack||e)})}"
@@ -58,5 +60,36 @@ final class ScriptLog: NSObject, WKScriptMessageHandler {
         let module = body["module"] as? String ?? "?"
         let error = body["error"] as? String ?? "\(message.body)"
         logger.error("\(module, privacy: .public) failed on \(message.frameInfo.securityOrigin.host, privacy: .public): \(error, privacy: .public)")
+    }
+}
+
+@MainActor
+final class PageErrors: NSObject, WKScriptMessageHandler {
+    static let shared = PageErrors()
+    nonisolated static let name = "winerror"
+    static let limit = 50
+
+    struct Entry: Codable, Equatable {
+        let kind: String
+        let message: String
+        let page: String
+        let source: String
+        let line: Int
+        let date: Date
+    }
+
+    private var entries: [ObjectIdentifier: [Entry]] = [:]
+
+    func entries(for webView: WKWebView) -> [Entry] { entries[ObjectIdentifier(webView)] ?? [] }
+
+    func forget(_ webView: WKWebView) { entries[ObjectIdentifier(webView)] = nil }
+
+    func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let w = message.webView, let b = message.body as? [String: Any] else { return }
+        let entry = Entry(kind: b["kind"] as? String ?? "error", message: String((b["message"] as? String ?? "").prefix(500)),
+                          page: b["page"] as? String ?? "", source: b["source"] as? String ?? "", line: b["line"] as? Int ?? 0, date: Date())
+        var list = entries[ObjectIdentifier(w)] ?? []
+        list.append(entry)
+        entries[ObjectIdentifier(w)] = Array(list.suffix(Self.limit))
     }
 }

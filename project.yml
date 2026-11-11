@@ -17,6 +17,8 @@ targets:
   WinBrowse:
     type: application
     platform: iOS
+    scheme:
+      testTargets: [WinBrowseTests]
     sources:
       - path: App
         excludes:
@@ -55,3 +57,16 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: dev.winbrowse.browser
             CFBundleURLSchemes: [winbrowse]
+  WinBrowseTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+        excludes:
+          - Fixtures
+    dependencies:
+      - target: WinBrowse
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.winbrowse.tests
+        GENERATE_INFOPLIST_FILE: YES

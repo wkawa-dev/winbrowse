@@ -12,9 +12,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 @MainActor
 enum AppBoot {
     private static var booted = false
+    nonisolated static let hostedByTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
 
     static func boot() {
-        guard !booted else { return }
+        guard !booted, !hostedByTests else { return }
         booted = true
         // After a reinstall, put the saved cookies back before any tab loads.
         Task {
@@ -67,6 +68,7 @@ struct WinBrowseApp: App {
     @StateObject private var toasts = Toasts.shared
 
     init() {
+        guard !AppBoot.hostedByTests else { return }
         Vault.restoreFilesIfFreshInstall()
     }
 

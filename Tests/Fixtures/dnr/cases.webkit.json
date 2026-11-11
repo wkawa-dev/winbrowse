@@ -1,0 +1,288 @@
+{
+  "allow: becomes ignore-previous-rules" : [
+    {
+      "action" : {
+        "type" : "ignore-previous-rules"
+      },
+      "trigger" : {
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?cdn\\.example/player\\.js"
+      }
+    }
+  ],
+  "allowAllRequests: exempts a whole top-level site" : [
+    {
+      "action" : {
+        "type" : "ignore-previous-rules"
+      },
+      "trigger" : {
+        "if-top-url" : [
+          "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?trusted\\.example([^a-zA-Z0-9_.%-].*)?$"
+        ],
+        "url-filter" : ".*"
+      }
+    }
+  ],
+  "allowAllRequests: sub_frame only is dropped" : [
+
+  ],
+  "block: case-sensitive filter" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "resource-type" : [
+          "image",
+          "style-sheet",
+          "script",
+          "font",
+          "raw",
+          "svg-document",
+          "media",
+          "ping"
+        ],
+        "url-filter" : "/AdFrame/",
+        "url-filter-is-case-sensitive" : true
+      }
+    }
+  ],
+  "block: plain url filter applies to subresources only" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "resource-type" : [
+          "image",
+          "style-sheet",
+          "script",
+          "font",
+          "raw",
+          "svg-document",
+          "media",
+          "ping"
+        ],
+        "url-filter" : "/ads/banner\\."
+      }
+    }
+  ],
+  "block: pure host filter also blocks documents" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?tracker\\.example([^a-zA-Z0-9_.%-].*)?$"
+      }
+    }
+  ],
+  "block: request domains become one rule per domain" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?a\\.example([^a-zA-Z0-9_.%-].*)?$"
+      }
+    },
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?b\\.example([^a-zA-Z0-9_.%-].*)?$"
+      }
+    }
+  ],
+  "denyallow: block with excluded request domains" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "if-domain" : [
+          "*site.example"
+        ],
+        "resource-type" : [
+          "script"
+        ],
+        "url-filter" : ".*"
+      }
+    },
+    {
+      "action" : {
+        "type" : "ignore-previous-rules"
+      },
+      "trigger" : {
+        "if-domain" : [
+          "*site.example"
+        ],
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?cdn\\.example([^a-zA-Z0-9_.%-].*)?$"
+      }
+    }
+  ],
+  "domains: excluded initiator domains become unless-domain" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "load-type" : [
+          "first-party"
+        ],
+        "resource-type" : [
+          "image",
+          "style-sheet",
+          "script",
+          "font",
+          "raw",
+          "svg-document",
+          "media",
+          "ping"
+        ],
+        "unless-domain" : [
+          "*shop.example"
+        ],
+        "url-filter" : "/promo/"
+      }
+    }
+  ],
+  "domains: initiator domains become if-domain" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "if-domain" : [
+          "*news.example"
+        ],
+        "load-type" : [
+          "third-party"
+        ],
+        "resource-type" : [
+          "image",
+          "style-sheet",
+          "script",
+          "font",
+          "raw",
+          "svg-document",
+          "media",
+          "ping"
+        ],
+        "url-filter" : "/promo/"
+      }
+    }
+  ],
+  "domains: only wildcard initiators drop the rule" : [
+
+  ],
+  "dropped: modifyHeaders action" : [
+
+  ],
+  "dropped: non-ascii url filter" : [
+
+  ],
+  "dropped: regex filter" : [
+
+  ],
+  "dropped: request methods" : [
+
+  ],
+  "dropped: response headers" : [
+
+  ],
+  "dropped: script redirect" : [
+
+  ],
+  "dropped: url transform" : [
+
+  ],
+  "redirect: image redirect becomes block" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "resource-type" : [
+          "image"
+        ],
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?pixel\\.example([^a-zA-Z0-9_.%-].*)?$"
+      }
+    }
+  ],
+  "types: excluded image also excludes svg documents" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "resource-type" : [
+          "style-sheet",
+          "script",
+          "font",
+          "raw",
+          "media",
+          "ping"
+        ],
+        "url-filter" : "/pixel"
+      }
+    }
+  ],
+  "types: main_frame only is a top-frame document" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "load-context" : [
+          "top-frame"
+        ],
+        "resource-type" : [
+          "document"
+        ],
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?bad\\.example([^a-zA-Z0-9_.%-].*)?$"
+      }
+    }
+  ],
+  "types: scripts and images" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "resource-type" : [
+          "image",
+          "raw",
+          "script"
+        ],
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?ads\\.example([^a-zA-Z0-9_.%-].*)?$"
+      }
+    }
+  ],
+  "types: sub_frame only is a child-frame document" : [
+    {
+      "action" : {
+        "type" : "block"
+      },
+      "trigger" : {
+        "load-context" : [
+          "child-frame"
+        ],
+        "resource-type" : [
+          "document"
+        ],
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?frames\\.example([^a-zA-Z0-9_.%-].*)?$"
+      }
+    }
+  ],
+  "upgradeScheme: becomes make-https" : [
+    {
+      "action" : {
+        "type" : "make-https"
+      },
+      "trigger" : {
+        "url-filter" : "^[a-z][a-z0-9.+-]*://([^/:?#]*\\.)?insecure\\.example([^a-zA-Z0-9_.%-].*)?$"
+      }
+    }
+  ]
+}

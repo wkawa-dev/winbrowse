@@ -140,7 +140,7 @@ final class ContentBlocker: ObservableObject {
         UserDefaults.standard.set(out.count, forKey: "ubo.compiled.\(sig)")
         UserDefaults.standard.set(total, forKey: "ubo.compiledRules.\(sig)")
         // Drop lists from older signatures.
-        if let old = try? await store.availableIdentifiers() {
+        if let old = await store.availableIdentifiers() {
             for id in old where id.hasPrefix("ubo-") && !id.hasPrefix(sig) { try? await store.removeContentRuleList(forIdentifier: id) }
         }
         lists = out

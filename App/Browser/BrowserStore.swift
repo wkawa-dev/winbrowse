@@ -66,7 +66,7 @@ final class BrowserStore: ObservableObject {
 
     /// Keep at most a handful of live web views; colder tabs keep their history state and reload when shown.
     /// Background tabs kept live, scaled to the device: ~3 per GB of RAM (36 on a 12 GB iPad), never fewer than 6.
-    static let liveTabLimit = max(6, Int(ProcessInfo.processInfo.physicalMemory / 1_000_000_000) * 3)
+    nonisolated static let liveTabLimit = max(6, Int(ProcessInfo.processInfo.physicalMemory / 1_000_000_000) * 3)
     private var memoryObserver: NSObjectProtocol?
 
     private func trimMemory(keeping limit: Int = BrowserStore.liveTabLimit) {

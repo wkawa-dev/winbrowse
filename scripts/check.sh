@@ -23,6 +23,9 @@ step "eslint"
 [ -d node_modules ] || npm ci --silent --no-audit --no-fund
 npx --no-install eslint
 
+step "type check (Mac Catalyst SDK)"
+scripts/typecheck.sh
+
 if [ -z "$LINT_ONLY" ]; then
   need xcodegen "brew install xcodegen"
   step "xcodegen"

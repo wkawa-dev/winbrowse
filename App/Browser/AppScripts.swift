@@ -50,7 +50,7 @@ enum AppScripts {
 }
 
 final class ScriptLog: NSObject, WKScriptMessageHandler {
-    static let name = "winlog"
+    nonisolated static let name = "winlog"
     private let logger = Logger(subsystem: "dev.winbrowse.browser", category: "scripts")
 
     func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {

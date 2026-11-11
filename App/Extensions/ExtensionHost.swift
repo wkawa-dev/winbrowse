@@ -198,11 +198,7 @@ final class ExtensionHost: NSObject {
                 let css = cs.css.map { e.file($0) }.joined(separator: "\n")
                     .replacingOccurrences(of: "chrome-extension://__MSG_@@extension_id__/", with: e.baseURL)
                 let lit = jsString(css)
-                let src = """
-                if(\(guardExpr)){(function(){const s=document.createElement('style');s.setAttribute('data-winext','\(e.id)');s.textContent=\(lit);
-                const add=()=>{const p=document.head||document.documentElement;if(p){p.appendChild(s);return true}return false};
-                if(!add()){const o=new MutationObserver(()=>{if(add())o.disconnect()});o.observe(document,{childList:true,subtree:true})}})()}
-                """
+                let src = "if(\(guardExpr)){(\(AppScripts.bundled("isolated-style")))(\(lit))}"
                 out.append(WKUserScript(source: src, injectionTime: .atDocumentStart, forMainFrameOnly: !cs.allFrames, in: e.world))
             }
             guard !cs.js.isEmpty else { continue }
@@ -502,7 +498,7 @@ extension ExtensionHost: WKScriptMessageHandlerWithReply {
             guard let e = ext(id), let w = targetWebView(data["tabId"] as? Int, from: ep) else { return nil }
             var css = (data["files"] as? [String] ?? []).map { e.file($0) }.joined(separator: "\n")
             if let c = data["css"] as? String { css += "\n" + c }
-            let js = "(()=>{const s=document.createElement('style');s.textContent=\(jsString(css));(document.head||document.documentElement).appendChild(s)})()"
+            let js = "(\(AppScripts.bundled("isolated-style")))(\(jsString(css)));0"
             _ = try? await w.evaluateJavaScript(js, in: nil, contentWorld: e.world)
             return nil
         case "runtime.openOptionsPage":

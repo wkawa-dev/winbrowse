@@ -70,20 +70,19 @@ final class UBOScripts: NSObject {
         }
     }
 
-    /// chrome.runtime for uBO's isolated-world scripts: CSS insertion is done locally with a <style> element.
-    private static let cssShim = """
-    if (!self.chrome || !self.chrome.runtime) {
-      const styles = [];
-      const sheet = () => { let s = document.getElementById('__ubo_css'); if (!s) { s = document.createElement('style'); s.id = '__ubo_css'; } if (!s.isConnected) { const p = document.head || document.documentElement; if (p) p.appendChild(s); } return s; };
-      const flush = () => { const s = sheet(); s.textContent = styles.join('\\n'); };
-      const ensure = () => { if (document.documentElement) flush(); else new MutationObserver((m, o) => { if (document.documentElement) { o.disconnect(); flush(); } }).observe(document, { childList: true }); };
-      self.chrome = { runtime: { sendMessage: async (m) => {
-        if (m.what === 'insertCSS') { if (m.css && !styles.includes(m.css)) { styles.push(m.css); ensure(); } }
-        else if (m.what === 'removeCSS') { const i = styles.indexOf(m.css); if (i >= 0) { styles.splice(i, 1); ensure(); } }
-      } }, storage: { session: { get: async () => ({}), set: async () => {} }, local: { get: async () => ({}) } } };
-      document.addEventListener('DOMContentLoaded', () => { if (styles.length) flush(); });
+    private static var cssShim: String {
+        """
+        if (!self.chrome || !self.chrome.runtime) {
+          const styles = [];
+          let sheet = null;
+          const flush = () => { const css = styles.join('\\n'); if (sheet) sheet.set(css); else sheet = (\(AppScripts.bundled("isolated-style")))(css); };
+          self.chrome = { runtime: { sendMessage: async (m) => {
+            if (m.what === 'insertCSS') { if (m.css && !styles.includes(m.css)) { styles.push(m.css); flush(); } }
+            else if (m.what === 'removeCSS') { const i = styles.indexOf(m.css); if (i >= 0) { styles.splice(i, 1); flush(); } }
+          } }, storage: { session: { get: async () => ({}), set: async () => {} }, local: { get: async () => ({}) } } };
+        }
+        """
     }
-    """
 
     private static func scriptletWorlds() -> [String: Set<String>] {
         guard let d = try? Data(contentsOf: UBOAssets.root.appendingPathComponent("rulesets/scriptlet-details.json")),
